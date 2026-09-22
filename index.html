@@ -523,6 +523,9 @@ frameborder="1"
             .action-btn.reg-btn {
                 background: rgba(230, 81, 0, 0.85);
             }
+            .action-btn.shield-btn {
+                background: rgba(2, 136, 209, 0.85);
+            }
             #mobile_reg_modal {
                 position: fixed;
                 top: 0;
@@ -639,6 +642,7 @@ frameborder="1"
                 <div></div>
             </div>
             <div class="action-cluster">
+                <div class="touch-btn action-btn shield-btn" id="btn_shield" title="وضع التيسير والدعم الرياضي">🛡️</div>
                 <div class="touch-btn action-btn reg-btn" id="btn_reg" title="تسجيل الاسم">👤</div>
                 <div class="touch-btn action-btn pause-btn" id="btn_pause" title="إيقاف مؤقت">⏸️</div>
                 <div class="touch-btn action-btn" id="btn_enter" title="تأكيد / ابدأ">🚀</div>
@@ -735,6 +739,7 @@ frameborder="1"
         bindTouchBtn('btn_right', 'ArrowRight', 39, 'ArrowRight');
         bindTouchBtn('btn_enter', 'Enter', 13, 'Enter');
         bindTouchBtn('btn_pause', 'Escape', 27, 'Escape');
+        bindTouchBtn('btn_shield', '1', 49, 'Digit1');
 
         // Modal Open
         const regBtn = document.getElementById('btn_reg');
