@@ -1,4 +1,4 @@
-﻿<html lang="en-us"><script src="https://pygame-web.github.io/cdn/0.9.3/pythons.js" type=module id="site" data-python="python3.12" data-LINES=42 data-COLUMNS=132 data-os="vtx,snd,gui" async defer>#<!--
+<html lang="en-us"><script src="https://pygame-web.github.io/cdn/0.9.3/pythons.js" type=module id="site" data-python="python3.12" data-LINES=42 data-COLUMNS=132 data-os="vtx,snd,gui" async defer>#<!--
 
 print("""
 Loading web_app from web_app.apk
@@ -398,7 +398,7 @@ frameborder="1"
             fetch(webhookUrl, {
                 method: "POST",
                 mode: "no-cors",
-                headers: { "Content-Type": "text/plain" },
+                headers: { "Content-Type": "text/plain;charset=utf-8" },
                 body: typeof payloadJson === "string" ? payloadJson : JSON.stringify(payloadJson)
             }).then(function() {
                 console.log("Telemetry dispatched successfully to Google Sheets!");
@@ -452,6 +452,421 @@ frameborder="1"
         window.frames["iframe"].location = url;
     }
 
+    /* =========================================================================
+       CAPTAIN-Q MOBILE & TOUCH INTERFACE SUITE (FOR HOME & PHONE ACCESS)
+       ========================================================================= */
+    (function initMobileTouch() {
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 1024);
+
+        // Inject Styles
+        const style = document.createElement('style');
+        style.innerHTML = `
+            #touch_overlay {
+                position: fixed;
+                bottom: 12px;
+                left: 0;
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                padding: 0 16px;
+                box-sizing: border-box;
+                z-index: 9999;
+                pointer-events: none;
+                user-select: none;
+                -webkit-user-select: none;
+            }
+            .dpad-cluster {
+                display: grid;
+                grid-template-columns: repeat(3, 50px);
+                grid-template-rows: repeat(3, 50px);
+                gap: 4px;
+                pointer-events: auto;
+            }
+            .touch-btn {
+                width: 50px;
+                height: 50px;
+                border-radius: 14px;
+                background: rgba(27, 54, 93, 0.75);
+                border: 2px solid rgba(255, 255, 255, 0.85);
+                color: #FFFFFF;
+                font-size: 22px;
+                font-weight: bold;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                cursor: pointer;
+                touch-action: none;
+                transition: transform 0.08s, background 0.08s;
+            }
+            .touch-btn:active, .touch-btn.active {
+                background: rgba(43, 114, 219, 0.95);
+                transform: scale(0.90);
+            }
+            .action-cluster {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                pointer-events: auto;
+            }
+            .action-btn {
+                width: 52px;
+                height: 52px;
+                border-radius: 50%;
+                background: rgba(46, 125, 50, 0.85);
+                font-size: 18px;
+            }
+            .action-btn.pause-btn {
+                background: rgba(198, 40, 40, 0.85);
+            }
+            .action-btn.reg-btn {
+                background: rgba(230, 81, 0, 0.85);
+            }
+            #mobile_reg_modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(10, 20, 40, 0.88);
+                backdrop-filter: blur(8px);
+                display: none;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+                direction: rtl;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            .modal-card {
+                background: #FFFFFF;
+                border-radius: 20px;
+                padding: 22px 20px;
+                width: 90%;
+                max-width: 360px;
+                box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+                text-align: center;
+                border: 3px solid #1B365D;
+            }
+            .modal-title {
+                color: #1B365D;
+                font-size: 19px;
+                font-weight: bold;
+                margin-bottom: 4px;
+            }
+            .modal-sub {
+                color: #555555;
+                font-size: 13px;
+                margin-bottom: 12px;
+            }
+            .modal-input {
+                width: 100%;
+                padding: 12px 14px;
+                font-size: 15px;
+                border: 2px solid #2B4C7E;
+                border-radius: 10px;
+                box-sizing: border-box;
+                margin-bottom: 12px;
+                text-align: right;
+                outline: none;
+            }
+            .sec-selector {
+                display: flex;
+                gap: 6px;
+                margin-bottom: 14px;
+                justify-content: center;
+            }
+            .sec-btn {
+                flex: 1;
+                padding: 8px 2px;
+                border: 2px solid #D0D7DE;
+                background: #F4F8FC;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: bold;
+                cursor: pointer;
+                color: #1B365D;
+            }
+            .sec-btn.selected {
+                background: #1B365D;
+                color: #FFFFFF;
+                border-color: #1B365D;
+            }
+            .start-btn {
+                width: 100%;
+                padding: 12px;
+                background: #2E7D32;
+                color: #FFFFFF;
+                font-size: 16px;
+                font-weight: bold;
+                border: none;
+                border-radius: 10px;
+                cursor: pointer;
+                box-shadow: 0 4px 14px rgba(46, 125, 50, 0.4);
+            }
+            #rotate_hint {
+                position: fixed;
+                top: 8px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(27, 54, 93, 0.92);
+                color: #FFFFFF;
+                padding: 6px 14px;
+                border-radius: 20px;
+                font-size: 11.5px;
+                z-index: 9998;
+                display: none;
+                direction: rtl;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+                pointer-events: none;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Inject HTML
+        const overlay = document.createElement('div');
+        overlay.id = 'touch_overlay';
+        overlay.innerHTML = `
+            <div class="dpad-cluster">
+                <div></div>
+                <div class="touch-btn" id="btn_up">▲</div>
+                <div></div>
+                <div class="touch-btn" id="btn_left">◀</div>
+                <div></div>
+                <div class="touch-btn" id="btn_right">▶</div>
+                <div></div>
+                <div class="touch-btn" id="btn_down">▼</div>
+                <div></div>
+            </div>
+            <div class="action-cluster">
+                <div class="touch-btn action-btn reg-btn" id="btn_reg" title="تسجيل الاسم">👤</div>
+                <div class="touch-btn action-btn pause-btn" id="btn_pause" title="إيقاف مؤقت">⏸️</div>
+                <div class="touch-btn action-btn" id="btn_enter" title="تأكيد / ابدأ">🚀</div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const modal = document.createElement('div');
+        modal.id = 'mobile_reg_modal';
+        modal.innerHTML = `
+            <div class="modal-card">
+                <div class="modal-title">🎮 كابتن كيو (Captain-Q)</div>
+                <div class="modal-sub">مبادرة الرياضيات - الصف السابع الأساسي</div>
+                <input type="text" id="mobile_name_input" class="modal-input" placeholder="اكتب اسم الطالب الثلاثي..." dir="rtl" autocomplete="off" />
+                <div class="sec-selector">
+                    <button type="button" class="sec-btn selected" data-sec="0">سابع أ</button>
+                    <button type="button" class="sec-btn" data-sec="1">سابع ب</button>
+                    <button type="button" class="sec-btn" data-sec="2">سابع ج</button>
+                </div>
+                <button type="button" id="btn_modal_start" class="start-btn">انطلق إلى المتاهة 🚀</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        const rotateHint = document.createElement('div');
+        rotateHint.id = 'rotate_hint';
+        rotateHint.innerText = '📱 يُفضّل تدوير الهاتف بالعرض (Landscape) للتحكم الأسهل 🔄';
+        document.body.appendChild(rotateHint);
+
+        // Key Dispatcher
+        function triggerKey(key, keyCode, code) {
+            const canvas = document.getElementById("canvas") || window;
+            const evtDown = new KeyboardEvent("keydown", {
+                key: key,
+                keyCode: keyCode,
+                which: keyCode,
+                code: code || key,
+                bubbles: true,
+                cancelable: true
+            });
+            const evtUp = new KeyboardEvent("keyup", {
+                key: key,
+                keyCode: keyCode,
+                which: keyCode,
+                code: code || key,
+                bubbles: true,
+                cancelable: true
+            });
+
+            window.dispatchEvent(evtDown);
+            document.dispatchEvent(evtDown);
+            if (canvas !== window) canvas.dispatchEvent(evtDown);
+
+            setTimeout(() => {
+                window.dispatchEvent(evtUp);
+                document.dispatchEvent(evtUp);
+                if (canvas !== window) canvas.dispatchEvent(evtUp);
+            }, 80);
+        }
+
+        // Attach Continuous Button Holding
+        function bindTouchBtn(btnId, key, keyCode, code) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            let timer = null;
+
+            function press(e) {
+                if (e) e.preventDefault();
+                btn.classList.add('active');
+                triggerKey(key, keyCode, code);
+                clearInterval(timer);
+                timer = setInterval(() => {
+                    triggerKey(key, keyCode, code);
+                }, 120);
+            }
+
+            function release(e) {
+                if (e) e.preventDefault();
+                btn.classList.remove('active');
+                clearInterval(timer);
+            }
+
+            btn.addEventListener('touchstart', press, { passive: false });
+            btn.addEventListener('touchend', release, { passive: false });
+            btn.addEventListener('touchcancel', release, { passive: false });
+            btn.addEventListener('mousedown', press);
+            btn.addEventListener('mouseup', release);
+            btn.addEventListener('mouseleave', release);
+        }
+
+        bindTouchBtn('btn_up', 'ArrowUp', 38, 'ArrowUp');
+        bindTouchBtn('btn_down', 'ArrowDown', 40, 'ArrowDown');
+        bindTouchBtn('btn_left', 'ArrowLeft', 37, 'ArrowLeft');
+        bindTouchBtn('btn_right', 'ArrowRight', 39, 'ArrowRight');
+        bindTouchBtn('btn_enter', 'Enter', 13, 'Enter');
+        bindTouchBtn('btn_pause', 'Escape', 27, 'Escape');
+
+        // Modal Open
+        const regBtn = document.getElementById('btn_reg');
+        if (regBtn) {
+            regBtn.addEventListener('click', () => {
+                modal.style.display = 'flex';
+                document.getElementById('mobile_name_input').focus();
+            });
+            regBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                modal.style.display = 'flex';
+                document.getElementById('mobile_name_input').focus();
+            });
+        }
+
+        // Section Selector in Modal
+        let selectedSecIndex = 0;
+        const secBtns = modal.querySelectorAll('.sec-btn');
+        secBtns.forEach((b, idx) => {
+            b.addEventListener('click', () => {
+                secBtns.forEach(x => x.classList.remove('selected'));
+                b.classList.add('selected');
+                selectedSecIndex = idx;
+            });
+        });
+
+        // Start from Modal
+        const startBtn = document.getElementById('btn_modal_start');
+        startBtn.addEventListener('click', submitMobileProfile);
+        startBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            submitMobileProfile();
+        });
+
+        function submitMobileProfile() {
+            const input = document.getElementById('mobile_name_input');
+            const name = input.value.trim() || 'طالب متميز';
+            modal.style.display = 'none';
+
+            // Clear previous buffer by sending backspaces
+            for (let i = 0; i < 25; i++) {
+                setTimeout(() => triggerKey('Backspace', 8, 'Backspace'), i * 15);
+            }
+
+            // Set section
+            setTimeout(() => {
+                for (let s = 0; s < selectedSecIndex; s++) {
+                    setTimeout(() => triggerKey('Tab', 9, 'Tab'), s * 30);
+                }
+            }, 400);
+
+            // Type letters
+            setTimeout(() => {
+                for (let i = 0; i < name.length; i++) {
+                    const ch = name[i];
+                    setTimeout(() => {
+                        const canvas = document.getElementById("canvas") || window;
+                        const ev = new KeyboardEvent("keydown", {
+                            key: ch,
+                            charCode: ch.charCodeAt(0),
+                            bubbles: true
+                        });
+                        window.dispatchEvent(ev);
+                        if (canvas !== window) canvas.dispatchEvent(ev);
+                    }, i * 35);
+                }
+            }, 550);
+
+            // Trigger Enter to Start Game
+            setTimeout(() => {
+                triggerKey('Enter', 13, 'Enter');
+            }, 600 + (name.length * 35));
+        }
+
+        // Swipe Gestures on Screen
+        let touchX = 0;
+        let touchY = 0;
+        let touchT = 0;
+
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1 && !e.target.closest('.touch-btn, .modal-card')) {
+                touchX = e.touches[0].clientX;
+                touchY = e.touches[0].clientY;
+                touchT = Date.now();
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', (e) => {
+            if (e.changedTouches.length === 1 && !e.target.closest('.touch-btn, .modal-card')) {
+                const dx = e.changedTouches[0].clientX - touchX;
+                const dy = e.changedTouches[0].clientY - touchY;
+                const dt = Date.now() - touchT;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 25 && dt < 600) {
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        if (dx > 0) triggerKey('ArrowRight', 39, 'ArrowRight');
+                        else triggerKey('ArrowLeft', 37, 'ArrowLeft');
+                    } else {
+                        if (dy > 0) triggerKey('ArrowDown', 40, 'ArrowDown');
+                        else triggerKey('ArrowUp', 38, 'ArrowUp');
+                    }
+                }
+            }
+        }, { passive: true });
+
+        // Orientation Check
+        function checkOrientation() {
+            if (window.innerWidth <= 1024) {
+                overlay.style.display = 'flex';
+                if (window.innerHeight > window.innerWidth) {
+                    rotateHint.style.display = 'block';
+                } else {
+                    rotateHint.style.display = 'none';
+                }
+            } else {
+                overlay.style.display = 'none';
+                rotateHint.style.display = 'none';
+            }
+        }
+
+        window.addEventListener('resize', checkOrientation);
+        window.addEventListener('orientationchange', checkOrientation);
+        setTimeout(checkOrientation, 1500);
+
+        // Show registration modal automatically on touch phones after initial load
+        if (isTouchDevice) {
+            setTimeout(() => {
+                modal.style.display = 'flex';
+            }, 3000);
+        }
+    })();
     </script>
 
 </body>
