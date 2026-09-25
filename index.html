@@ -768,7 +768,44 @@ frameborder="1"
         window.activeStudentName = "طالب متميز";
         window.activeStudentSection = "سابع أ";
 
+        // ========== CANVAS FREEZE SYSTEM ==========
+        // When the mobile keyboard opens, CSS `vh` units shrink causing the canvas
+        // to resize. Pygbag's internal state then gets confused and doesn't restore
+        // properly. Solution: freeze canvas to fixed pixel dimensions BEFORE
+        // the keyboard appears, and only restore after keyboard fully dismisses.
+        let modalIsOpen = false;
+        let frozenCanvasWidth = null;
+        let frozenCanvasHeight = null;
+
+        function freezeCanvas() {
+            const c = document.getElementById('canvas');
+            if (!c) return;
+            const rect = c.getBoundingClientRect();
+            frozenCanvasWidth = Math.round(rect.width);
+            frozenCanvasHeight = Math.round(rect.height);
+            // Override CSS with fixed pixel values — immune to vh changes
+            c.style.setProperty('width', frozenCanvasWidth + 'px', 'important');
+            c.style.setProperty('height', frozenCanvasHeight + 'px', 'important');
+            c.style.setProperty('max-width', frozenCanvasWidth + 'px', 'important');
+            c.style.setProperty('max-height', frozenCanvasHeight + 'px', 'important');
+        }
+
+        function unfreezeCanvas() {
+            const c = document.getElementById('canvas');
+            if (!c) return;
+            // Remove inline overrides so the responsive CSS rules take over again
+            c.style.removeProperty('width');
+            c.style.removeProperty('height');
+            c.style.removeProperty('max-width');
+            c.style.removeProperty('max-height');
+            frozenCanvasWidth = null;
+            frozenCanvasHeight = null;
+        }
+
         window.openMobileRegistration = function() {
+            // Freeze canvas BEFORE showing modal/keyboard
+            freezeCanvas();
+            modalIsOpen = true;
             modal.style.display = 'flex';
             const inp = document.getElementById('mobile_name_input');
             if (inp) {
@@ -779,7 +816,6 @@ frameborder="1"
                     inp.focus({ preventScroll: true });
                 }, 150);
             }
-            enforceViewportReset();
         };
 
         // Modal Open via 👤 button
@@ -817,7 +853,9 @@ frameborder="1"
         const nameInput = document.getElementById('mobile_name_input');
         if (nameInput) {
             nameInput.addEventListener('blur', () => {
-                setTimeout(enforceViewportReset, 100);
+                if (!modalIsOpen) {
+                    setTimeout(enforceViewportReset, 100);
+                }
             });
             nameInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
@@ -851,8 +889,11 @@ frameborder="1"
             window.activeStudentName = name;
             window.activeStudentSection = sec;
 
-            // 1. Instantly drop the soft keyboard by blurring active element
-            if (input) input.blur();
+            // 1. Instantly drop the soft keyboard by blurring ALL elements
+            if (input) {
+                input.readOnly = true;  // Prevent re-focus
+                input.blur();
+            }
             if (document.activeElement) document.activeElement.blur();
 
             // 2. Provide clear visual feedback on the button
@@ -881,28 +922,31 @@ frameborder="1"
                 window.sendStudentReport(startPayload);
             }
 
-            // 3. CRITICAL: Wait 350ms for mobile OS soft keyboard to complete its slide-down animation!
-            // Keeping modal in the DOM during this interval prevents iOS/Android visualViewport corruption.
+            // 3. Wait 500ms for keyboard to FULLY dismiss (iOS needs up to 400ms)
             setTimeout(() => {
-                // Reset scroll and re-snap viewport
-                enforceViewportReset();
-
-                // 4. Hide modal ONLY AFTER keyboard is completely down
+                // 4. Hide modal
                 modal.style.display = 'none';
+                modalIsOpen = false;
+
+                // 5. Restore input for potential re-use
+                if (input) input.readOnly = false;
                 if (btn) {
                     btn.disabled = false;
                     btn.style.opacity = '1';
                     btn.innerText = 'انطلق إلى المتاهة 🚀';
                 }
 
-                // 5. Stabilize canvas layout and launch game
+                // 6. Unfreeze canvas — let responsive CSS recalculate at full viewport
+                unfreezeCanvas();
+                enforceViewportReset();
+
+                // 7. After one more frame, stabilize and start the game
                 setTimeout(() => {
                     enforceViewportReset();
-                    // Dispatch single Enter key to Python to start game immediately
                     triggerKey('Enter', 13, 'Enter');
                     isSubmittingProfile = false;
-                }, 80);
-            }, 350);
+                }, 120);
+            }, 500);
         }
 
         // Swipe Gestures on Screen
@@ -942,6 +986,8 @@ frameborder="1"
 
         // Overlay Visibility Check
         function checkControls() {
+            // Skip resize handling while modal/keyboard is active
+            if (modalIsOpen) return;
             if (window.innerWidth <= 1024 || isTouchDevice) {
                 overlay.style.display = 'flex';
             } else {
