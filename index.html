@@ -651,36 +651,31 @@ frameborder="1"
             lastGlobalTouchEnd = now;
         }, { passive: false });
 
+        // Simple scroll/viewport reset — does NOT call Pygbag's window_resize
+        // (calling window_resize is what was overriding our CSS and causing the zoom!)
         function enforceViewportReset() {
             window.scrollTo(0, 0);
             document.body.scrollTop = 0;
             document.documentElement.scrollTop = 0;
-            if (window.visualViewport) {
-                try {
-                    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-                } catch(e) {}
-            }
             const meta = document.querySelector('meta[name="viewport"]');
             if (meta) {
                 meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover');
             }
-            if (typeof window.window_resize === 'function') {
-                try { window.window_resize(); } catch(e) {}
-            }
-            window.dispatchEvent(new Event('resize'));
         }
 
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', () => {
-                if (window.visualViewport.scale > 1.0) {
-                    enforceViewportReset();
-                }
-            });
-            window.visualViewport.addEventListener('scroll', () => {
-                if (window.visualViewport.pageTop !== 0 || window.visualViewport.offsetTop !== 0) {
-                    window.scrollTo(0, 0);
-                }
-            });
+        // Force canvas back to correct constrained size by applying inline !important styles.
+        // This overrides anything Pygbag may have set via its own resize handler.
+        function forceCanvasConstraints() {
+            const c = document.getElementById('canvas');
+            if (!c) return;
+            // Calculate the correct size: min(100vw, 52vh, 480px)
+            const vw = window.innerWidth;
+            const vh52 = Math.round(window.innerHeight * 0.52);
+            const size = Math.min(vw, vh52, 480);
+            c.style.setProperty('width', size + 'px', 'important');
+            c.style.setProperty('height', size + 'px', 'important');
+            c.style.setProperty('max-width', size + 'px', 'important');
+            c.style.setProperty('max-height', size + 'px', 'important');
         }
 
         // Key Dispatcher
@@ -873,6 +868,7 @@ frameborder="1"
         }, { passive: true });
 
         let isSubmittingProfile = false;
+        let blockResizeUntil = 0;  // Timestamp: block resize events until this time
 
         function submitMobileProfile() {
             if (isSubmittingProfile) return;
@@ -922,13 +918,16 @@ frameborder="1"
                 window.sendStudentReport(startPayload);
             }
 
-            // 3. Wait 500ms for keyboard to FULLY dismiss (iOS needs up to 400ms)
+            // 3. Block ALL resize events for the next 2.5 seconds
+            blockResizeUntil = Date.now() + 2500;
+
+            // 4. Wait 500ms for keyboard to FULLY dismiss (iOS needs up to 400ms)
             setTimeout(() => {
-                // 4. Hide modal
+                // 5. Hide modal
                 modal.style.display = 'none';
                 modalIsOpen = false;
 
-                // 5. Restore input for potential re-use
+                // 6. Restore input for potential re-use
                 if (input) input.readOnly = false;
                 if (btn) {
                     btn.disabled = false;
@@ -936,15 +935,24 @@ frameborder="1"
                     btn.innerText = 'انطلق إلى المتاهة 🚀';
                 }
 
-                // 6. Unfreeze canvas — let responsive CSS recalculate at full viewport
-                unfreezeCanvas();
+                // 7. Force canvas to correct constrained size (overrides Pygbag)
                 enforceViewportReset();
+                forceCanvasConstraints();
 
-                // 7. After one more frame, stabilize and start the game
+                // 8. After one more frame, stabilize and start the game
                 setTimeout(() => {
                     enforceViewportReset();
+                    forceCanvasConstraints();
                     triggerKey('Enter', 13, 'Enter');
-                    isSubmittingProfile = false;
+
+                    // 9. Keep forcing constraints for 2 more seconds to beat any delayed Pygbag resize
+                    const forceInterval = setInterval(() => {
+                        forceCanvasConstraints();
+                    }, 200);
+                    setTimeout(() => {
+                        clearInterval(forceInterval);
+                        isSubmittingProfile = false;
+                    }, 2000);
                 }, 120);
             }, 500);
         }
@@ -986,14 +994,15 @@ frameborder="1"
 
         // Overlay Visibility Check
         function checkControls() {
-            // Skip resize handling while modal/keyboard is active
-            if (modalIsOpen) return;
+            // Skip resize handling while modal/keyboard is active or during cooldown
+            if (modalIsOpen || Date.now() < blockResizeUntil) return;
             if (window.innerWidth <= 1024 || isTouchDevice) {
                 overlay.style.display = 'flex';
             } else {
                 overlay.style.display = 'none';
             }
-            enforceViewportReset();
+            // Re-apply canvas constraints on every resize to override Pygbag
+            forceCanvasConstraints();
         }
 
         window.addEventListener('resize', checkControls);
