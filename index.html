@@ -29,7 +29,7 @@ async def custom_site():
     platform.window.canvas.style.visibility = "visible"
 
 
-    bundle = "captain_q_v7"
+    bundle = "captain_q_v8"
 
     # the C or js loader could do that but be explicit.
     appdir = Path(f"/data/data/{bundle}")
@@ -39,12 +39,12 @@ async def custom_site():
     # unpack filesystem from compressed archive into work dir
     if platform.window.location.host.find('.itch.zone')>0:
         import zipfile
-        async with platform.fopen("web_app.apk?v=7", "rb") as archive:
+        async with platform.fopen("web_app.apk?v=8", "rb") as archive:
             with zipfile.ZipFile(archive) as zip_ref:
                 zip_ref.extractall(appdir.as_posix())
     else:
         import tarfile
-        async with platform.fopen("web_app.tar.gz?v=7", "rb") as archive:
+        async with platform.fopen("web_app.tar.gz?v=8", "rb") as archive:
             tar = tarfile.open(fileobj=archive, mode="r:gz")
             tar.extractall(path=appdir.as_posix(), filter='tar')
             tar.close()
