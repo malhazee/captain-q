@@ -29,7 +29,7 @@ async def custom_site():
     platform.window.canvas.style.visibility = "visible"
 
 
-    bundle = "captain_q_v5"
+    bundle = "captain_q_v6"
 
     # the C or js loader could do that but be explicit.
     appdir = Path(f"/data/data/{bundle}")
@@ -39,12 +39,12 @@ async def custom_site():
     # unpack filesystem from compressed archive into work dir
     if platform.window.location.host.find('.itch.zone')>0:
         import zipfile
-        async with platform.fopen("web_app.apk?v=5", "rb") as archive:
+        async with platform.fopen("web_app.apk?v=6", "rb") as archive:
             with zipfile.ZipFile(archive) as zip_ref:
                 zip_ref.extractall(appdir.as_posix())
     else:
         import tarfile
-        async with platform.fopen("web_app.tar.gz?v=5", "rb") as archive:
+        async with platform.fopen("web_app.tar.gz?v=6", "rb") as archive:
             tar = tarfile.open(fileobj=archive, mode="r:gz")
             tar.extractall(path=appdir.as_posix(), filter='tar')
             tar.close()
@@ -143,7 +143,7 @@ config = {
     archive : "web_app",
     gui_debug : 0,
     cdn : "https://pygame-web.github.io/cdn/0.9.3/",
-    autorun : 0,
+    autorun : 1,
     PYBUILD : "3.12",
     fb_ar   :  1.0,
     fb_width : "960",
@@ -500,54 +500,61 @@ frameborder="1"
                 background: #C62828;
             }
             #mobile_reg_modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(7, 13, 30, 0.92);
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                background: rgba(7, 13, 30, 0.94);
                 backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
                 display: none;
-                align-items: center;
-                justify-content: center;
+                align-items: flex-start !important;
+                justify-content: center !important;
+                padding-top: max(24px, env(safe-area-inset-top, 24px)) !important;
                 z-index: 10000;
                 direction: rtl;
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                touch-action: manipulation;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
             }
             .modal-card {
                 background: #FFFFFF;
                 border-radius: 20px;
-                padding: 24px 20px;
+                padding: 22px 20px 20px 20px;
                 width: 90%;
                 max-width: 360px;
                 box-shadow: 0 12px 36px rgba(0,0,0,0.7);
                 text-align: center;
                 border: 3px solid #1B365D;
+                margin-top: 10px;
             }
             .modal-title {
                 color: #1B365D;
-                font-size: 20px;
+                font-size: 19px;
                 font-weight: bold;
-                margin-bottom: 6px;
+                margin-bottom: 4px;
             }
             .modal-sub {
-                color: #555555;
-                font-size: 13.5px;
-                margin-bottom: 14px;
+                color: #475569;
+                font-size: 13px;
+                margin-bottom: 12px;
             }
             .modal-input {
                 width: 100%;
-                padding: 14px 16px;
-                font-size: 18px !important; /* CRITICAL: >= 16px prevents iOS/Android auto-zoom */
+                padding: 13px 15px;
+                font-size: 18px !important; /* CRITICAL: >= 16px strictly prevents iOS/Android auto-zoom */
                 border: 2px solid #2B4C7E;
                 border-radius: 12px;
                 box-sizing: border-box;
-                margin-bottom: 14px;
+                margin-bottom: 12px;
                 text-align: right;
                 outline: none;
                 background: #F8FAFC;
                 color: #0F172A;
                 -webkit-appearance: none;
+                touch-action: manipulation;
             }
             .sec-selector {
                 display: flex;
@@ -720,17 +727,35 @@ frameborder="1"
         bindTouchBtn('btn_pause', 'Escape', 27, 'Escape');
         bindTouchBtn('btn_shield', '1', 49, 'Digit1');
 
-        // Modal Open
+        // Direct Python-JS Bridge Globals
+        window.activeStudentName = "طالب متميز";
+        window.activeStudentSection = "سابع أ";
+
+        window.openMobileRegistration = function() {
+            modal.style.display = 'flex';
+            const inp = document.getElementById('mobile_name_input');
+            if (inp) {
+                if (window.activeStudentName && window.activeStudentName !== 'طالب متميز') {
+                    inp.value = window.activeStudentName;
+                }
+                setTimeout(() => {
+                    inp.focus();
+                    enforceViewportReset();
+                }, 100);
+            }
+            enforceViewportReset();
+        };
+
+        // Modal Open via 👤 button
         const regBtn = document.getElementById('btn_reg');
         if (regBtn) {
-            regBtn.addEventListener('click', () => {
-                modal.style.display = 'flex';
-                document.getElementById('mobile_name_input').focus();
+            regBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.openMobileRegistration();
             });
             regBtn.addEventListener('touchend', (e) => {
                 e.preventDefault();
-                modal.style.display = 'flex';
-                document.getElementById('mobile_name_input').focus();
+                window.openMobileRegistration();
             });
         }
 
@@ -758,46 +783,57 @@ frameborder="1"
             nameInput.addEventListener('blur', enforceViewportReset);
         }
 
+        // Strictly prevent background scroll offset
+        window.addEventListener('scroll', () => {
+            if (window.scrollY !== 0 || window.scrollX !== 0) {
+                window.scrollTo(0, 0);
+            }
+        }, { passive: true });
+
         function submitMobileProfile() {
             const input = document.getElementById('mobile_name_input');
-            const name = input.value.trim() || 'طالب متميز';
+            const rawName = input ? input.value.trim() : '';
+            const name = rawName || 'طالب متميز';
+            const secList = ["سابع أ", "سابع ب", "سابع ج"];
+            const sec = secList[selectedSecIndex] || "سابع أ";
+
+            // Store directly in window object for Python GameState bridge
+            window.activeStudentName = name;
+            window.activeStudentSection = sec;
+
+            // Instantly blur input and hide modal to drop soft keyboard
+            if (input) input.blur();
             modal.style.display = 'none';
             enforceViewportReset();
 
-            // Clear previous buffer by sending backspaces
-            for (let i = 0; i < 25; i++) {
-                setTimeout(() => triggerKey('Backspace', 8, 'Backspace'), i * 15);
+            // Real-time telemetry: notify teacher's dashboard immediately that student started the session
+            const startPayload = {
+                student_name: name,
+                student_section: sec,
+                level_reached: 1,
+                score: 0,
+                lives_remaining: 3,
+                correct_count: 0,
+                wrong_count: 0,
+                accuracy_rate: "0.0%",
+                time_spent_seconds: 0,
+                misconceptions: ["🎮 بدأ الجلسة الآن (قيد التحدي)"],
+                questions_detail: "بدء التحدي من الهاتف المنزلي",
+                timestamp: new Date().toISOString()
+            };
+            if (window.sendStudentReport) {
+                window.sendStudentReport(startPayload);
             }
 
-            // Set section
-            setTimeout(() => {
-                for (let s = 0; s < selectedSecIndex; s++) {
-                    setTimeout(() => triggerKey('Tab', 9, 'Tab'), s * 30);
-                }
-            }, 400);
-
-            // Type letters
-            setTimeout(() => {
-                for (let i = 0; i < name.length; i++) {
-                    const ch = name[i];
-                    setTimeout(() => {
-                        const canvas = document.getElementById("canvas") || window;
-                        const ev = new KeyboardEvent("keydown", {
-                            key: ch,
-                            charCode: ch.charCodeAt(0),
-                            bubbles: true
-                        });
-                        window.dispatchEvent(ev);
-                        if (canvas !== window) canvas.dispatchEvent(ev);
-                    }, i * 35);
-                }
-            }, 550);
-
-            // Trigger Enter to Start Game
+            // Dispatch Enter key to Python to start game immediately
             setTimeout(() => {
                 triggerKey('Enter', 13, 'Enter');
                 enforceViewportReset();
-            }, 600 + (name.length * 35));
+            }, 60);
+            setTimeout(() => {
+                triggerKey('Enter', 13, 'Enter');
+                enforceViewportReset();
+            }, 220);
         }
 
         // Swipe Gestures on Screen
@@ -848,14 +884,6 @@ frameborder="1"
         window.addEventListener('resize', checkControls);
         window.addEventListener('orientationchange', checkControls);
         setTimeout(checkControls, 1000);
-
-        // Show registration modal automatically on touch phones after initial load
-        if (isTouchDevice) {
-            setTimeout(() => {
-                modal.style.display = 'flex';
-                enforceViewportReset();
-            }, 1800);
-        }
     })();
     </script>
 
