@@ -215,8 +215,8 @@ function show_infobox() {
             background-color: #000000 !important;
             max-width: 100vw !important;
             max-height: 52vh !important;
-            width: min(100vw, 52vh) !important;
-            height: min(100vw, 52vh) !important;
+            width: min(100vw, 52vh, 480px) !important;
+            height: min(100vw, 52vh, 480px) !important;
             aspect-ratio: 1 / 1 !important;
             object-fit: contain !important;
             position: absolute !important;
@@ -544,7 +544,7 @@ frameborder="1"
             .modal-input {
                 width: 100%;
                 padding: 13px 15px;
-                font-size: 18px !important; /* CRITICAL: >= 16px strictly prevents iOS/Android auto-zoom */
+                font-size: 19px !important; /* CRITICAL: >= 16px strictly prevents iOS/Android auto-zoom */
                 border: 2px solid #2B4C7E;
                 border-radius: 12px;
                 box-sizing: border-box;
@@ -555,6 +555,7 @@ frameborder="1"
                 color: #0F172A;
                 -webkit-appearance: none;
                 touch-action: manipulation;
+                -webkit-text-size-adjust: 100%;
             }
             .sec-selector {
                 display: flex;
@@ -624,7 +625,7 @@ frameborder="1"
             <div class="modal-card">
                 <div class="modal-title">🎮 كابتن كيو (Captain-Q)</div>
                 <div class="modal-sub">مبادرة الرياضيات - الصف السابع الأساسي</div>
-                <input type="text" id="mobile_name_input" class="modal-input" placeholder="اكتب اسم الطالب الثلاثي..." dir="rtl" autocomplete="off" />
+                <input type="text" id="mobile_name_input" class="modal-input" placeholder="اكتب اسم الطالب الثلاثي..." dir="rtl" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
                 <div class="sec-selector">
                     <button type="button" class="sec-btn selected" data-sec="0">سابع أ</button>
                     <button type="button" class="sec-btn" data-sec="1">سابع ب</button>
@@ -640,14 +641,46 @@ frameborder="1"
         document.addEventListener('gesturechange', (e) => e.preventDefault());
         document.addEventListener('gestureend', (e) => e.preventDefault());
 
+        // Prevent iOS Safari double-tap-to-zoom on screen
+        let lastGlobalTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastGlobalTouchEnd <= 300 && !e.target.closest('input, button, select, textarea, .sec-btn')) {
+                e.preventDefault();
+            }
+            lastGlobalTouchEnd = now;
+        }, { passive: false });
+
         function enforceViewportReset() {
             window.scrollTo(0, 0);
             document.body.scrollTop = 0;
             document.documentElement.scrollTop = 0;
+            if (window.visualViewport) {
+                try {
+                    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                } catch(e) {}
+            }
             const meta = document.querySelector('meta[name="viewport"]');
             if (meta) {
                 meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover');
             }
+            if (typeof window.window_resize === 'function') {
+                try { window.window_resize(); } catch(e) {}
+            }
+            window.dispatchEvent(new Event('resize'));
+        }
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                if (window.visualViewport.scale > 1.0) {
+                    enforceViewportReset();
+                }
+            });
+            window.visualViewport.addEventListener('scroll', () => {
+                if (window.visualViewport.pageTop !== 0 || window.visualViewport.offsetTop !== 0) {
+                    window.scrollTo(0, 0);
+                }
+            });
         }
 
         // Key Dispatcher
@@ -743,9 +776,8 @@ frameborder="1"
                     inp.value = window.activeStudentName;
                 }
                 setTimeout(() => {
-                    inp.focus();
-                    enforceViewportReset();
-                }, 100);
+                    inp.focus({ preventScroll: true });
+                }, 150);
             }
             enforceViewportReset();
         };
@@ -784,7 +816,15 @@ frameborder="1"
 
         const nameInput = document.getElementById('mobile_name_input');
         if (nameInput) {
-            nameInput.addEventListener('blur', enforceViewportReset);
+            nameInput.addEventListener('blur', () => {
+                setTimeout(enforceViewportReset, 100);
+            });
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    submitMobileProfile();
+                }
+            });
         }
 
         // Strictly prevent background scroll offset
@@ -794,8 +834,14 @@ frameborder="1"
             }
         }, { passive: true });
 
+        let isSubmittingProfile = false;
+
         function submitMobileProfile() {
+            if (isSubmittingProfile) return;
+            isSubmittingProfile = true;
+
             const input = document.getElementById('mobile_name_input');
+            const btn = document.getElementById('btn_modal_start');
             const rawName = input ? input.value.trim() : '';
             const name = rawName || 'طالب متميز';
             const secList = ["سابع أ", "سابع ب", "سابع ج"];
@@ -805,10 +851,16 @@ frameborder="1"
             window.activeStudentName = name;
             window.activeStudentSection = sec;
 
-            // Instantly blur input and hide modal to drop soft keyboard
+            // 1. Instantly drop the soft keyboard by blurring active element
             if (input) input.blur();
-            modal.style.display = 'none';
-            enforceViewportReset();
+            if (document.activeElement) document.activeElement.blur();
+
+            // 2. Provide clear visual feedback on the button
+            if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.75';
+                btn.innerText = 'جاري تحضير المتاهة... ⏳';
+            }
 
             // Real-time telemetry: notify teacher's dashboard immediately that student started the session
             const startPayload = {
@@ -829,11 +881,28 @@ frameborder="1"
                 window.sendStudentReport(startPayload);
             }
 
-            // Dispatch single Enter key to Python to start game immediately
+            // 3. CRITICAL: Wait 350ms for mobile OS soft keyboard to complete its slide-down animation!
+            // Keeping modal in the DOM during this interval prevents iOS/Android visualViewport corruption.
             setTimeout(() => {
-                triggerKey('Enter', 13, 'Enter');
+                // Reset scroll and re-snap viewport
                 enforceViewportReset();
-            }, 80);
+
+                // 4. Hide modal ONLY AFTER keyboard is completely down
+                modal.style.display = 'none';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.innerText = 'انطلق إلى المتاهة 🚀';
+                }
+
+                // 5. Stabilize canvas layout and launch game
+                setTimeout(() => {
+                    enforceViewportReset();
+                    // Dispatch single Enter key to Python to start game immediately
+                    triggerKey('Enter', 13, 'Enter');
+                    isSubmittingProfile = false;
+                }, 80);
+            }, 350);
         }
 
         // Swipe Gestures on Screen
