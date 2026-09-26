@@ -138,11 +138,7 @@ class TelemetryTracker {
             { rank: 7, name: "مهند يزن الزعبي", section: "شعبة ج", score: 2750, accuracy: "85.7%", level: 6 },
             { rank: 8, name: "عمر باسل الزعبي", section: "شعبة ج", score: 2690, accuracy: "81.1%", level: 6 },
             { rank: 9, name: "احمد سليمان عارف", section: "شعبة ب", score: 2690, accuracy: "81.1%", level: 6 },
-            { rank: 10, name: "عبدالله عدنان شقيرات", section: "شعبة أ", score: 2690, accuracy: "81.1%", level: 6 },
-            { rank: 11, name: "ابراهيم مفلح الزعبي", section: "شعبة ب", score: 2660, accuracy: "78.9%", level: 6 },
-            { rank: 12, name: "محمد معاذ عارف", section: "شعبة ج", score: 2660, accuracy: "78.9%", level: 6 },
-            { rank: 13, name: "سامي طارق سامي", section: "شعبة ب", score: 2600, accuracy: "75.0%", level: 5 },
-            { rank: 14, name: "محمد أحمد الزعبي", section: "شعبة ج", score: 2600, accuracy: "75.0%", level: 5 }
+            { rank: 10, name: "عبدالله عدنان شقيرات", section: "شعبة أ", score: 2690, accuracy: "81.1%", level: 6 }
         ];
     }
 
@@ -154,7 +150,7 @@ class TelemetryTracker {
                 if (Array.isArray(list) && list.length > 0) {
                     const hasOldPlaceholder = list.some(item => item.name === "زيد المحاسيس" || item.name === "عمر الطراونة");
                     if (!hasOldPlaceholder) {
-                        return list;
+                        return list.slice(0, 10);
                     }
                 }
             }
@@ -199,11 +195,11 @@ class TelemetryTracker {
                 if (b.score !== a.score) return b.score - a.score;
                 return (parseFloat(b.accuracy) || 0) - (parseFloat(a.accuracy) || 0);
             });
-            // Re-assign ranks
-            list.slice(0, 15).forEach((item, idx) => {
+            // Re-assign ranks and keep strictly top 10
+            list = list.slice(0, 10);
+            list.forEach((item, idx) => {
                 item.rank = idx + 1;
             });
-            list = list.slice(0, 15);
             localStorage.setItem("captain_q_public_leaderboard", JSON.stringify(list));
         } catch (e) {
             console.warn("Error updating local leaderboard:", e);
@@ -223,8 +219,9 @@ class TelemetryTracker {
                 if (res.ok) {
                     const data = await res.json();
                     if (data && Array.isArray(data.leaderboard) && data.leaderboard.length > 0) {
-                        localStorage.setItem("captain_q_public_leaderboard", JSON.stringify(data.leaderboard));
-                        return { source: "cloud", data: data.leaderboard };
+                        const top10 = data.leaderboard.slice(0, 10);
+                        localStorage.setItem("captain_q_public_leaderboard", JSON.stringify(top10));
+                        return { source: "cloud", data: top10 };
                     }
                 }
             } catch (err) {
