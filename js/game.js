@@ -96,7 +96,7 @@ class CaptainQGame {
         if (shieldBtn) {
             const onShield = (e) => {
                 if (e) e.preventDefault();
-                this.activateShield(8);
+                this.toggleShield();
             };
             shieldBtn.addEventListener("click", onShield);
             shieldBtn.addEventListener("touchstart", onShield, { passive: false });
@@ -150,13 +150,15 @@ class CaptainQGame {
 
         // Player
         const pSpawn = this.maze.getPlayerSpawn();
+        const prevPermanentShield = this.player ? this.player.permanentShield : false;
         if (!this.player) {
             this.player = new Player(pSpawn, tileSize, this.mazeOffsetX, this.mazeOffsetY);
         } else {
             this.player.tileSize = tileSize;
             this.player.reset(pSpawn, this.mazeOffsetX, this.mazeOffsetY);
         }
-        this.player.speed = levelConfig.playerSpeed || 2.2;
+        this.player.permanentShield = prevPermanentShield;
+        this.player.speed = levelConfig.playerSpeed || 1.35;
 
         // Ghosts: Spaced out across house & entrance so all 4 ghosts are visible and roam!
         const cx = Math.floor(this.maze.cols / 2);
@@ -176,13 +178,24 @@ class CaptainQGame {
             const gInfo = gColors[i];
             const g = new Ghost(gInfo.id, gInfo.name, gInfo.color, gInfo.corner, tileSize, this.mazeOffsetX, this.mazeOffsetY);
             g.reset(gInfo.spawn, gInfo.state, gInfo.exitDelay, this.mazeOffsetX, this.mazeOffsetY);
-            g.speed = levelConfig.ghostSpeed || 1.4;
+            g.speed = levelConfig.ghostSpeed || 0.85;
             this.ghosts.push(g);
         }
 
         // Mission & Collectibles
         this.missionMgr.loadLevel(this.levelIndex, this.maze);
         this.levelTimer = GAME_CONFIG.LEVEL_TIME_LIMIT;
+    }
+
+    toggleShield() {
+        if (!this.player) return;
+        const isActive = this.player.togglePermanentShield();
+        audio.playSuperDot();
+        if (isActive) {
+            this.missionMgr.addFloatingText(this.player.pixelX, this.player.pixelY, "🛡️ الدرع: مفعّل دائماً!", "#38bdf8");
+        } else {
+            this.missionMgr.addFloatingText(this.player.pixelX, this.player.pixelY, "🛡️ تم إيقاف الدرع", "#f87171");
+        }
     }
 
     activateShield(durationSec = 7) {
@@ -213,8 +226,13 @@ class CaptainQGame {
         // Update shield button visual state
         const shieldBtn = document.getElementById("btn_shield");
         if (shieldBtn && this.player) {
-            if (this.player.isShieldActive()) shieldBtn.classList.add("active");
-            else shieldBtn.classList.remove("active");
+            if (this.player.isShieldActive()) {
+                shieldBtn.classList.add("active");
+                shieldBtn.setAttribute("title", "🛡️ الدرع الخارق: مفعّل دائماً (انقر للإلغاء)");
+            } else {
+                shieldBtn.classList.remove("active");
+                shieldBtn.setAttribute("title", "🛡️ تفعيل درع الحماية الدائم");
+            }
         }
 
         requestAnimationFrame((ts) => this.gameLoop(ts));
@@ -556,8 +574,12 @@ class CaptainQGame {
         let statusText = "";
         for (let i = 0; i < this.lives; i++) statusText += "❤️ ";
         if (this.player && this.player.isShieldActive()) {
-            const sSec = Math.ceil(this.player.shieldTimer / 60);
-            statusText += ` | 🛡️ ${sSec}ث`;
+            if (this.player.permanentShield) {
+                statusText += ` | 🛡️ درع دائم`;
+            } else {
+                const sSec = Math.ceil(this.player.shieldTimer / 60);
+                statusText += ` | 🛡️ ${sSec}ث`;
+            }
         }
         ctx.font = "15px system-ui, sans-serif";
         ctx.fillStyle = (this.player && this.player.isShieldActive()) ? "#38bdf8" : "#ffffff";

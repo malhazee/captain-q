@@ -165,12 +165,18 @@ html, body {
     background: linear-gradient(135deg, #10b981, #059669);
     border-color: #34d399;
     box-shadow: 0 0 18px rgba(52, 211, 153, 0.85);
-    animation: pulseShieldBtn 0.8s infinite alternate;
+    animation: pulseShieldBtn 1s infinite alternate ease-in-out;
 }
 
 @keyframes pulseShieldBtn {
-    from { transform: scale(1); }
-    to { transform: scale(1.12); }
+    from {
+        box-shadow: 0 0 10px rgba(52, 211, 153, 0.6);
+        filter: brightness(1);
+    }
+    to {
+        box-shadow: 0 0 24px rgba(52, 211, 153, 1);
+        filter: brightness(1.15);
+    }
 }
 
 .reg-btn {

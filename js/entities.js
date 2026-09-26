@@ -24,8 +24,9 @@ class Player {
         this.dir = DIR.NONE;
         this.nextDir = DIR.NONE;
         this.facingDir = DIR.EAST;
-        this.speed = 2.2; // pixels per frame (tuned smooth arcade speed)
+        this.speed = 1.35; // Calm, deliberate, accessible educational arcade speed
         this.shieldTimer = 0; // frames of invincibility
+        this.permanentShield = false; // toggleable permanent invincibility mode
         
         // Animation
         this.mouthAngle = 0.2;
@@ -43,15 +44,27 @@ class Player {
         this.dir = DIR.NONE;
         this.nextDir = DIR.NONE;
         this.facingDir = DIR.EAST;
-        this.shieldTimer = 0;
+        if (!this.permanentShield) {
+            this.shieldTimer = 0;
+        }
     }
 
     activateShield(durationSec = 6) {
-        this.shieldTimer = durationSec * 60;
+        if (!this.permanentShield) {
+            this.shieldTimer = durationSec * 60;
+        }
+    }
+
+    togglePermanentShield() {
+        this.permanentShield = !this.permanentShield;
+        if (!this.permanentShield) {
+            this.shieldTimer = 0;
+        }
+        return this.permanentShield;
     }
 
     isShieldActive() {
-        return this.shieldTimer > 0;
+        return this.permanentShield || this.shieldTimer > 0;
     }
 
     setNextDir(direction) {
@@ -59,17 +72,17 @@ class Player {
     }
 
     update(maze) {
-        if (this.shieldTimer > 0) {
+        if (!this.permanentShield && this.shieldTimer > 0) {
             this.shieldTimer--;
         }
 
-        // Mouth animation
+        // Mouth animation calibrated to slower calm speed
         if (this.dir !== DIR.NONE) {
             if (this.mouthOpening) {
-                this.mouthAngle += 0.05;
+                this.mouthAngle += 0.035;
                 if (this.mouthAngle >= 0.45) this.mouthOpening = false;
             } else {
-                this.mouthAngle -= 0.05;
+                this.mouthAngle -= 0.035;
                 if (this.mouthAngle <= 0.05) this.mouthOpening = true;
             }
         }
@@ -235,7 +248,7 @@ class Ghost {
         this.pixelY = this.offsetY + (this.gridY + 0.5) * tileSize;
 
         this.dir = DIR.NORTH;
-        this.speed = 1.4; // tuned smooth ghost speed
+        this.speed = 0.85; // tuned smooth ghost speed
         this.state = "CHASE"; // WAITING, EXITING, CHASE, SCATTER, FRIGHTENED, EATEN
         this.exitDelay = 0;
         this.frightenedTimer = 0;
@@ -287,13 +300,13 @@ class Ghost {
             const exitTargetY = this.offsetY + (exitR + 0.5) * this.tileSize;
 
             // Center horizontally first
-            if (Math.abs(this.pixelX - centerTargetX) > 1.5) {
-                this.pixelX += Math.sign(centerTargetX - this.pixelX) * 1.5;
+            if (Math.abs(this.pixelX - centerTargetX) > 1.0) {
+                this.pixelX += Math.sign(centerTargetX - this.pixelX) * 1.0;
                 this.dir = centerTargetX > this.pixelX ? DIR.EAST : DIR.WEST;
             } else {
                 this.pixelX = centerTargetX;
                 this.dir = DIR.NORTH;
-                this.pixelY -= 1.6; // Move up through door
+                this.pixelY -= 1.0; // Move up through door
                 if (this.pixelY <= exitTargetY) {
                     this.pixelY = exitTargetY;
                     this.gridX = cx;
@@ -316,8 +329,8 @@ class Ghost {
             }
         }
 
-        const currentSpeed = this.state === "FRIGHTENED" ? this.speed * 0.6 :
-                             this.state === "EATEN" ? this.speed * 2.0 : this.speed;
+        const currentSpeed = this.state === "FRIGHTENED" ? this.speed * 0.65 :
+                             this.state === "EATEN" ? this.speed * 2.2 : this.speed;
 
         const cellKey = `${this.gridX},${this.gridY}`;
         const centerPixelX = this.offsetX + (this.gridX + 0.5) * this.tileSize;

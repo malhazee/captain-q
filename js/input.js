@@ -42,7 +42,7 @@ class InputHandler {
                     break;
                 case " ":
                 case "1":
-                    if (window.gameInstance) window.gameInstance.activateShield();
+                    if (window.gameInstance) window.gameInstance.toggleShield();
                     e.preventDefault();
                     break;
             }

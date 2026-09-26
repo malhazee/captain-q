@@ -64,8 +64,8 @@ const GAME_CONFIG = {
             traps: ["1/3", "0.05", "-0.5", "2/5"],
             neededCount: 5,
             ghostCount: 4,
-            playerSpeed: 2.2,
-            ghostSpeed: 1.4
+            playerSpeed: 1.35,
+            ghostSpeed: 0.85
         },
         {
             level: 2,
@@ -75,8 +75,8 @@ const GAME_CONFIG = {
             traps: ["+0.5", "3/4", "0", "1.2"],
             neededCount: 5,
             ghostCount: 4,
-            playerSpeed: 2.25,
-            ghostSpeed: 1.45
+            playerSpeed: 1.40,
+            ghostSpeed: 0.90
         },
         {
             level: 3,
@@ -86,8 +86,8 @@ const GAME_CONFIG = {
             traps: ["3/5", "0.34", "4/3", "7/10"],
             neededCount: 5,
             ghostCount: 4,
-            playerSpeed: 2.3,
-            ghostSpeed: 1.5
+            playerSpeed: 1.45,
+            ghostSpeed: 0.95
         },
         {
             level: 4,
@@ -97,8 +97,8 @@ const GAME_CONFIG = {
             traps: ["-2.5", "5/2", "-3", "1.8"],
             neededCount: 5,
             ghostCount: 4,
-            playerSpeed: 2.35,
-            ghostSpeed: 1.55
+            playerSpeed: 1.50,
+            ghostSpeed: 1.00
         },
         {
             level: 5,
@@ -108,8 +108,8 @@ const GAME_CONFIG = {
             traps: ["5/4", "1.5", "-1/3", "3/2"],
             neededCount: 5,
             ghostCount: 4,
-            playerSpeed: 2.4,
-            ghostSpeed: 1.6
+            playerSpeed: 1.55,
+            ghostSpeed: 1.05
         },
         {
             level: 6,
@@ -119,8 +119,8 @@ const GAME_CONFIG = {
             traps: ["1/0", "5/0", "0/0", "pi"],
             neededCount: 5,
             ghostCount: 4,
-            playerSpeed: 2.45,
-            ghostSpeed: 1.65
+            playerSpeed: 1.60,
+            ghostSpeed: 1.10
         }
     ]
 };
