@@ -138,7 +138,54 @@ asyncio.run( custom_site() )
 --><script type="application/javascript">
 // END BLOCK
 
+// Clean Console Filter: suppress internal engine verbose notices and deprecations
+(function() {
+    window.BrowserFS = window.BrowserFS || {};
+    const filterPatterns = [
+        "Unrecognized feature",
+        "Allow attribute will take precedence",
+        "NO VT/stdout",
+        "NO ume unlocker",
+        "TODO: user defined canvas",
+        "Unsupported device pixel ratio",
+        "BrowserFS",
+        "ScriptProcessorNode",
+        "FLAGS : is_mobile",
+        "locateData",
+        "locateFile",
+        "Connection: Wired",
+        "VM.prerun",
+        "VM.postrun",
+        "UserWarning: no font cache"
+    ];
 
+    const _warn = console.warn;
+    console.warn = function(...args) {
+        const text = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+        for (const p of filterPatterns) {
+            if (text.includes(p)) return;
+        }
+        _warn.apply(console, args);
+    };
+
+    const _log = console.log;
+    console.log = function(...args) {
+        const text = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+        for (const p of filterPatterns) {
+            if (text.includes(p)) return;
+        }
+        _log.apply(console, args);
+    };
+
+    const _err = console.error;
+    console.error = function(...args) {
+        const text = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+        for (const p of filterPatterns) {
+            if (text.includes(p)) return;
+        }
+        _err.apply(console, args);
+    };
+})();
 
 // this dict is available under PyConfig.config from __main__
 
@@ -263,8 +310,6 @@ function show_infobox() {
 */
     </script>
 
-    <script src="https://pygame-web.github.io/cdn/0.9.3//browserfs.min.js"></script>
-
 </head>
 
 <body>
@@ -337,15 +382,10 @@ height="720px"
             <iframe id="iframe" class="framed" name="iframe"
 width="470px" height="90%"
 allowtransparency="true"
-style="z-index: 10;"
-style="background: #FFFFFF;"
+style="z-index: 10; background: #FFFFFF;"
 frameborder="1"
-                allowfullscreen="true"
-                webkitallowfullscreen="true"
-                msallowfullscreen="true"
-                mozallowfullscreen="true"
                 sandbox="allow-same-origin allow-top-navigation allow-scripts allow-pointer-lock"
-                allow="autoplay; fullscreen *; geolocation; microphone; camera; midi; monetization; xr-spatial-tracking; gamepad; gyroscope; accelerometer; xr; cross-origin-isolated"
+                allow="autoplay; fullscreen"
                 src="https://pygame-web.github.io/cdn/0.9.3/empty.html"
                 scrolling="yes">
             </iframe>
@@ -970,14 +1010,11 @@ frameborder="1"
                 window.mobileLaunchRequested = true;
                 triggerKey('Enter', 13, 'Enter');
 
-                // 9. Keep forcing constraints for 2 more seconds to beat any delayed Pygbag resize
-                const forceInterval = setInterval(() => {
-                    forceCanvasConstraints();
-                }, 200);
+                // 9. Single debounced constraint enforcement to avoid forced reflows
                 setTimeout(() => {
-                    clearInterval(forceInterval);
+                    forceCanvasConstraints();
                     isSubmittingProfile = false;
-                }, 2000);
+                }, 350);
             }, 180);
         }
 
