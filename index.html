@@ -20,7 +20,8 @@
         <!-- Top student badge & Quick Actions -->
         <div id="student_badge_bar">
             <div id="student_badge">👤 طالب مجهول (شعبة أ)</div>
-            <div style="display: flex; gap: 8px;">
+            <div style="display: flex; gap: 6px;">
+                <button id="btn_quick_leaderboard" class="badge-action-btn" title="لوحة المتصدرين">🏆</button>
                 <button id="btn_quick_help" class="badge-action-btn" title="تعليمات المهمة">📜</button>
                 <button id="btn_quick_sound" class="badge-action-btn" title="تبديل الصوت">🔊</button>
             </div>
@@ -47,12 +48,12 @@
             <!-- Action buttons -->
             <div class="action-cluster">
                 <button id="btn_shield" class="action-btn shield-btn" title="تفعيل درع الحماية الدائم 🛡️">🛡️</button>
-                <button id="btn_reg" class="action-btn reg-btn" title="تعديل الاسم والتعليمات">👤</button>
+                <button id="btn_reg" class="action-btn reg-btn" title="القائمة الرئيسية ولوحة المتصدرين">👤</button>
                 <button id="btn_pause" class="action-btn pause-btn" title="إيقاف مؤقت">⏸️</button>
             </div>
         </div>
 
-        <!-- Start / Welcome Screen (شاشة البداية والتسجيل) -->
+        <!-- Start / Welcome Screen Modal (قائمة البداية التفاعلية) -->
         <div id="mobile_reg_modal">
             <div class="modal-card">
                 <!-- Title & Hero Header -->
@@ -60,46 +61,84 @@
                 <div class="modal-title">🛡️ كابتن كيو (Captain-Q)</div>
                 <div class="modal-sub">مغامرة الأعداد النسبية - منهاج الرياضيات للصف السابع</div>
 
-                <!-- Student Information Card -->
-                <div class="form-group">
-                    <label class="form-label" for="mobile_name_input">👤 اسم بطل الرياضيات الثلاثي:</label>
-                    <input type="text" id="mobile_name_input" class="modal-input" placeholder="اكتب اسمك الثلاثي هنا..." maxlength="30" autocomplete="off" autofocus>
+                <!-- Three Navigation Menu Tabs (أزرار القائمة الرئيسية الثلاثة) -->
+                <div class="menu-tabs">
+                    <button id="tab_btn_start" class="menu-tab-btn active">🚀 ابدأ المتاهة</button>
+                    <button id="tab_btn_leaderboard" class="menu-tab-btn">🏆 المتصدرون</button>
+                    <button id="tab_btn_guide" class="menu-tab-btn">📜 الإرشادات</button>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label">🏫 الشعبة الدراسية:</label>
-                    <div class="section-selector">
-                        <button class="sec-btn selected">شعبة أ</button>
-                        <button class="sec-btn">شعبة ب</button>
-                        <button class="sec-btn">شعبة ج</button>
-                        <button class="sec-btn">شعبة د</button>
+                <!-- VIEW 1: START MAZE (ابدأ المتاهة) -->
+                <div id="menu_view_start" class="menu-view">
+                    <div class="form-group">
+                        <label class="form-label" for="mobile_name_input">👤 اسم بطل الرياضيات الثلاثي:</label>
+                        <input type="text" id="mobile_name_input" class="modal-input" placeholder="اكتب اسمك الثلاثي هنا..." maxlength="30" autocomplete="off" autofocus>
                     </div>
+
+                    <div class="form-group">
+                        <label class="form-label">🏫 الشعبة الدراسية:</label>
+                        <div class="section-selector">
+                            <button class="sec-btn selected">شعبة أ</button>
+                            <button class="sec-btn">شعبة ب</button>
+                            <button class="sec-btn">شعبة ج</button>
+                            <button class="sec-btn">شعبة د</button>
+                        </div>
+                    </div>
+
+                    <button id="btn_modal_start" class="start-btn">انطلق في مغامرة المتاهة الآن 🚀</button>
+                    <button id="btn_sound_toggle" class="sound-toggle-btn">🔊 المؤثرات الصوتية: مفعلة</button>
                 </div>
 
-                <!-- Educational Mission Briefing & Safe Sanctuary Card -->
-                <div class="guide-box">
-                    <div class="guide-title">📜 دليل المهمة والملاذ الآمن:</div>
-                    <div class="guide-item">
-                        <span class="guide-icon">🎯</span>
-                        <div class="guide-text"><strong>الهدف:</strong> التقط بطاقات الأعداد النسبية المكافئة المطلوبة في أعلى الشاشة.</div>
+                <!-- VIEW 2: COLLECTIVE LEADERBOARD (لوحة المتصدرين الجماعية) -->
+                <div id="menu_view_leaderboard" class="menu-view" style="display:none;">
+                    <div class="lb-header-bar">
+                        <div class="lb-title">🏆 لوحة شرف فرسان الرياضيات</div>
+                        <div class="lb-actions">
+                            <span id="lb_status_badge" class="lb-badge">🟢 مباشر</span>
+                            <button id="btn_refresh_leaderboard" class="lb-refresh-btn" title="تحديث السجلات">🔄</button>
+                        </div>
                     </div>
-                    <div class="guide-item">
-                        <span class="guide-icon">⚠️</span>
-                        <div class="guide-text"><strong>احذر الأفخاخ:</strong> تجنب المفاهيم الخاطئة والأعداد غير المطابقة (<span style="color:#f87171">-30 نقطة</span>).</div>
+                    <div class="lb-sub">أعلى الدرجات والإنجازات الموثقة لطلبة الصف السابع</div>
+                    
+                    <div id="leaderboard_container" class="leaderboard-container">
+                        <!-- Populated dynamically by JavaScript -->
                     </div>
-                    <div class="guide-item">
-                        <span class="guide-icon">🛡️</span>
-                        <div class="guide-text"><strong>مساحة الملاذ الآمن:</strong> الغرفة الخضراء المركزية تحميك تماماً؛ الأشباح لا تستطيع مهاجمتك داخلها!</div>
-                    </div>
-                    <div class="guide-item">
-                        <span class="guide-icon">⚡</span>
-                        <div class="guide-text"><strong>الكرات الخارقة:</strong> تجعل الأشباح زرقاء وخائفة لتلتقطها وتعيدها لأماكنها بأمان.</div>
-                    </div>
+
+                    <button id="btn_lb_go_start" class="start-btn" style="margin-top: 10px;">انضم للمنافسة وابدأ المتاهة 🚀</button>
                 </div>
 
-                <!-- Primary Action Buttons -->
-                <button id="btn_modal_start" class="start-btn">انطلق في المغامرة الآن 🚀</button>
-                <button id="btn_sound_toggle" class="sound-toggle-btn">🔊 المؤثرات الصوتية: مفعلة</button>
+                <!-- VIEW 3: INSTRUCTIONS & SAFE SANCTUARY GUIDE (دليل الإرشادات) -->
+                <div id="menu_view_guide" class="menu-view" style="display:none;">
+                    <div class="guide-box">
+                        <div class="guide-title">📜 دليل المهمة والملاذ الآمن:</div>
+                        <div class="guide-item">
+                            <span class="guide-icon">🎯</span>
+                            <div class="guide-text"><strong>الهدف الأساسي:</strong> التقط بطاقات الأعداد النسبية والكسور المكافئة المطلوبة في شريط المهمة العلوي (<span style="color:#4ade80">+100 نقطة</span>).</div>
+                        </div>
+                        <div class="guide-item">
+                            <span class="guide-icon">⚠️</span>
+                            <div class="guide-text"><strong>احذر الأفخاخ:</strong> تجنب المفاهيم الخاطئة والأعداد غير المتطابقة (<span style="color:#f87171">-30 نقطة</span>).</div>
+                        </div>
+                        <div class="guide-item">
+                            <span class="guide-icon">🛡️</span>
+                            <div class="guide-text"><strong>مساحة الملاذ الآمن:</strong> الغرفة الخضراء المركزية تحميك تماماً؛ الأشباح لا تستطيع مهاجمتك داخلها مطلقاً!</div>
+                        </div>
+                        <div class="guide-item">
+                            <span class="guide-icon">⚡</span>
+                            <div class="guide-text"><strong>الكرات الخارقة:</strong> تمنحك درع الحماية وتجعل الأشباح زرقاء وخائفة لتلتقطها وتعيدها لمكانها بأمان.</div>
+                        </div>
+                        <div class="guide-item">
+                            <span class="guide-icon">🎮</span>
+                            <div class="guide-text"><strong>التحكم:</strong> أزرار الاتجاهات (D-Pad) للشاشات اللمسية، أو أسهم لوحة المفاتيح (Arrows) للكمبيوتر.</div>
+                        </div>
+                        <div class="guide-item">
+                            <span class="guide-icon">⏱️</span>
+                            <div class="guide-text"><strong>الوقت والأرواح:</strong> 90 ثانية لكل مرحلة، و 3 أرواح لإنهاء المراحل الست وصولاً لـ 3,000 نقطة.</div>
+                        </div>
+                    </div>
+
+                    <button id="btn_guide_go_start" class="start-btn">فهمت المهمة.. انطلق للمتاهة 🚀</button>
+                </div>
             </div>
         </div>
     </div>

@@ -83,11 +83,70 @@ class CaptainQGame {
             });
         }
 
+        // Navigation Tabs inside Start Modal
+        const tabBtnStart = document.getElementById("tab_btn_start");
+        const tabBtnLeaderboard = document.getElementById("tab_btn_leaderboard");
+        const tabBtnGuide = document.getElementById("tab_btn_guide");
+
+        const viewStart = document.getElementById("menu_view_start");
+        const viewLeaderboard = document.getElementById("menu_view_leaderboard");
+        const viewGuide = document.getElementById("menu_view_guide");
+
+        this.switchMenuTab = (tab) => {
+            [tabBtnStart, tabBtnLeaderboard, tabBtnGuide].forEach(b => b && b.classList.remove("active"));
+            if (viewStart) viewStart.style.display = "none";
+            if (viewLeaderboard) viewLeaderboard.style.display = "none";
+            if (viewGuide) viewGuide.style.display = "none";
+
+            if (tab === "leaderboard") {
+                if (tabBtnLeaderboard) tabBtnLeaderboard.classList.add("active");
+                if (viewLeaderboard) viewLeaderboard.style.display = "block";
+                this.renderLeaderboardView();
+            } else if (tab === "guide") {
+                if (tabBtnGuide) tabBtnGuide.classList.add("active");
+                if (viewGuide) viewGuide.style.display = "block";
+            } else {
+                if (tabBtnStart) tabBtnStart.classList.add("active");
+                if (viewStart) viewStart.style.display = "block";
+            }
+        };
+
+        if (tabBtnStart) tabBtnStart.addEventListener("click", () => this.switchMenuTab("start"));
+        if (tabBtnLeaderboard) tabBtnLeaderboard.addEventListener("click", () => this.switchMenuTab("leaderboard"));
+        if (tabBtnGuide) tabBtnGuide.addEventListener("click", () => this.switchMenuTab("guide"));
+
+        const btnLbGoStart = document.getElementById("btn_lb_go_start");
+        if (btnLbGoStart) btnLbGoStart.addEventListener("click", () => {
+            this.switchMenuTab("start");
+            const input = document.getElementById("mobile_name_input");
+            if (input) input.focus();
+        });
+
+        const btnGuideGoStart = document.getElementById("btn_guide_go_start");
+        if (btnGuideGoStart) btnGuideGoStart.addEventListener("click", () => {
+            this.switchMenuTab("start");
+            const input = document.getElementById("mobile_name_input");
+            if (input) input.focus();
+        });
+
+        const btnRefreshLb = document.getElementById("btn_refresh_leaderboard");
+        if (btnRefreshLb) btnRefreshLb.addEventListener("click", () => this.renderLeaderboardView());
+
+        // Quick Top Bar Buttons
+        const quickLeaderboardBtn = document.getElementById("btn_quick_leaderboard");
+        if (quickLeaderboardBtn) {
+            quickLeaderboardBtn.addEventListener("click", () => {
+                document.getElementById("mobile_reg_modal").style.display = "flex";
+                this.switchMenuTab("leaderboard");
+            });
+        }
+
         // Quick Help button in Top Bar
         const quickHelpBtn = document.getElementById("btn_quick_help");
         if (quickHelpBtn) {
             quickHelpBtn.addEventListener("click", () => {
                 document.getElementById("mobile_reg_modal").style.display = "flex";
+                this.switchMenuTab("guide");
             });
         }
 
@@ -108,10 +167,11 @@ class CaptainQGame {
             pauseBtn.addEventListener("click", () => this.togglePause());
         }
 
-        // Reg button
+        // Reg / Menu button in bottom controls
         const regBtn = document.getElementById("btn_reg");
         if (regBtn) {
             regBtn.addEventListener("click", () => {
+                this.switchMenuTab("start");
                 document.getElementById("mobile_reg_modal").style.display = "flex";
             });
         }
@@ -149,6 +209,72 @@ class CaptainQGame {
         }
     }
 
+    renderLeaderboardView() {
+        const container = document.getElementById("leaderboard_container");
+        const statusBadge = document.getElementById("lb_status_badge");
+        if (!container) return;
+
+        const renderList = (list, isCloud) => {
+            if (statusBadge) {
+                if (isCloud) {
+                    statusBadge.className = "lb-badge";
+                    statusBadge.innerText = "🟢 سحابي مباشر";
+                } else {
+                    statusBadge.className = "lb-badge local";
+                    statusBadge.innerText = "⚡ مباشر (محدّث)";
+                }
+            }
+
+            if (!list || list.length === 0) {
+                container.innerHTML = '<div style="padding: 24px; color: #94a3b8; font-size: 13px;">لا توجد سجلات بعد. كن أول بطل يتصدر القائمة! 🌟</div>';
+                return;
+            }
+
+            let html = "";
+            list.forEach((item, index) => {
+                const rank = item.rank || (index + 1);
+                let rankClass = "";
+                let medal = `#${rank}`;
+                if (rank === 1) { rankClass = "top-1"; medal = "🥇"; }
+                else if (rank === 2) { rankClass = "top-2"; medal = "🥈"; }
+                else if (rank === 3) { rankClass = "top-3"; medal = "🥉"; }
+
+                const scoreDisplay = (item.score || 0).toLocaleString("ar-JO");
+                const acc = item.accuracy || "100%";
+                const sec = item.section || "شعبة أ";
+
+                html += `
+                    <div class="lb-row ${rankClass}">
+                        <div class="lb-left">
+                            <div class="lb-rank">${medal}</div>
+                            <div class="lb-info">
+                                <span class="lb-name">${item.name}</span>
+                                <span class="lb-sec">🏫 ${sec}</span>
+                            </div>
+                        </div>
+                        <div class="lb-right">
+                            <span class="lb-score">${scoreDisplay} ⭐</span>
+                            <span class="lb-acc">🎯 ${acc} إتقان</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        };
+
+        // 1. Instantly display cached/local records
+        const localList = this.telemetry.getLocalLeaderboard();
+        renderList(localList, false);
+
+        // 2. Query cloud asynchronously and update smoothly if cloud data is received
+        this.telemetry.fetchLeaderboard().then(result => {
+            if (result && result.source === "cloud" && Array.isArray(result.data)) {
+                renderList(result.data, true);
+            }
+        });
+    }
+
     returnToMainMenu() {
         this.state = "REGISTRATION";
         this.score = 0;
@@ -160,6 +286,9 @@ class CaptainQGame {
             this.telemetry.resetSession();
         }
         this.setupLevel(0);
+        if (this.switchMenuTab) {
+            this.switchMenuTab("start");
+        }
         const modal = document.getElementById("mobile_reg_modal");
         if (modal) {
             modal.style.display = "flex";
@@ -393,6 +522,11 @@ class CaptainQGame {
         const colRes = this.missionMgr.checkCollisions(this.player, this.telemetry);
         if (colRes.pointsDelta !== 0) {
             this.score = Math.max(0, this.score + colRes.pointsDelta);
+            if (this.telemetry) {
+                this.telemetry.score = this.score;
+                this.telemetry.level = this.levelIndex + 1;
+                this.telemetry.lives = this.lives;
+            }
             if (this.score > this.highScore) {
                 this.highScore = this.score;
                 localStorage.setItem("captain_q_high", this.highScore.toString());
@@ -484,7 +618,12 @@ class CaptainQGame {
         if (this.lives <= 0) {
             this.state = "GAME_OVER";
             this.gameOverReason = `انتهاء الأرواح (${reason})`;
-            this.telemetry.sendFinalReport(`انتهت المحاولات (${reason})`);
+            if (this.telemetry) {
+                this.telemetry.score = this.score;
+                this.telemetry.level = this.levelIndex + 1;
+                this.telemetry.lives = this.lives;
+                this.telemetry.sendFinalReport(`انتهت المحاولات (${reason})`);
+            }
         } else {
             // Respawn player in center and ghosts at their 4 corners
             const pSpawn = this.maze.getPlayerSpawn();
@@ -501,10 +640,17 @@ class CaptainQGame {
 
     handleLevelClear() {
         audio.playVictory();
+        if (this.telemetry) {
+            this.telemetry.score = this.score;
+            this.telemetry.level = this.levelIndex + 1;
+            this.telemetry.lives = this.lives;
+        }
         if (this.levelIndex + 1 >= GAME_CONFIG.LEVELS.length) {
             this.state = "VICTORY";
             this.gameOverReason = "فوز وتفوق تام 🏆";
-            this.telemetry.sendFinalReport("فوز ساحق وتجاوز كافة المراحل 🏆");
+            if (this.telemetry) {
+                this.telemetry.sendFinalReport("فوز ساحق وتجاوز كافة المراحل 🏆");
+            }
         } else {
             this.state = "LEVEL_CLEAR";
             setTimeout(() => {
@@ -1005,11 +1151,11 @@ class CaptainQGame {
 
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 20px system-ui, sans-serif";
-        ctx.fillText("🔄 العودة للقائمة الرئيسية وبدء محاولة جديدة", this.canvas.width / 2, actBtnY + 35);
+        ctx.fillText("🏆 العودة للقائمة الرئيسية ولوحة المتصدرين", this.canvas.width / 2, actBtnY + 35);
 
         ctx.fillStyle = "#94a3b8";
         ctx.font = "14px system-ui, sans-serif";
-        ctx.fillText("انقر في أي مكان على الشاشة أو اضغط [مسافة] للعودة فوراً", this.canvas.width / 2, cy + 575);
+        ctx.fillText("انقر في أي مكان على الشاشة للعودة ورؤية ترتيبك في لوحة الشرف", this.canvas.width / 2, cy + 575);
     }
 
     renderGameOverOverlay(ctx) {
