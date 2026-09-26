@@ -170,7 +170,8 @@ class TelemetryTracker {
             let list = this.getLocalLeaderboard();
             let found = false;
             for (let item of list) {
-                if (item.name.trim() === name.trim()) {
+                // Match by both name and section to differentiate students with the same name across sections
+                if (item.name.trim() === name.trim() && (item.section || "").trim() === (section || "").trim()) {
                     if (score > item.score) {
                         item.score = score;
                         item.accuracy = accuracy;
