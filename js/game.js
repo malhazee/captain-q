@@ -232,14 +232,27 @@ class CaptainQGame {
 
             let html = "";
             list.forEach((item, index) => {
+                const score = item.score || 0;
+                // Solution 1: Every student who achieved 3,000 points is recognized as المركز الأول مكرر 🥇 with 👑 فارس الإتقان badge
+                const isGoldChampion = (score >= 3000) || (item.rank === 1 && (item.accuracy === "100%" || score >= 3000));
                 const rank = item.rank || (index + 1);
                 let rankClass = "";
                 let medal = `#${rank}`;
-                if (rank === 1) { rankClass = "top-1"; medal = "🥇"; }
-                else if (rank === 2) { rankClass = "top-2"; medal = "🥈"; }
-                else if (rank === 3) { rankClass = "top-3"; medal = "🥉"; }
+                let badgeHtml = "";
 
-                const scoreDisplay = (item.score || 0).toLocaleString("ar-JO");
+                if (isGoldChampion) {
+                    rankClass = "top-1 gold-champion";
+                    medal = "🥇";
+                    badgeHtml = `<span class="lb-star-badge">👑 فارس الإتقان</span>`;
+                } else if (rank === 2) {
+                    rankClass = "top-2";
+                    medal = "🥈";
+                } else if (rank === 3) {
+                    rankClass = "top-3";
+                    medal = "🥉";
+                }
+
+                const scoreDisplay = score.toLocaleString("ar-JO");
                 const acc = item.accuracy || "100%";
                 const sec = item.section || "شعبة أ";
 
@@ -248,7 +261,10 @@ class CaptainQGame {
                         <div class="lb-left">
                             <div class="lb-rank">${medal}</div>
                             <div class="lb-info">
-                                <span class="lb-name">${item.name}</span>
+                                <div class="lb-name-row">
+                                    <span class="lb-name">${item.name}</span>
+                                    ${badgeHtml}
+                                </div>
                                 <span class="lb-sec">🏫 ${sec}</span>
                             </div>
                         </div>

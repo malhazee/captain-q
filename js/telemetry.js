@@ -130,15 +130,15 @@ class TelemetryTracker {
     getDefaultLeaderboard() {
         return [
             { rank: 1, name: "كريم عدي الزعبي", section: "شعبة أ", score: 3000, accuracy: "100%", level: 6 },
-            { rank: 2, name: "مصعب", section: "شعبة ج", score: 3000, accuracy: "100%", level: 6 },
-            { rank: 3, name: "هيثم يوسف الخطيب", section: "شعبة ب", score: 3000, accuracy: "100%", level: 6 },
-            { rank: 4, name: "محمود عدي الزعبي", section: "شعبة أ", score: 2810, accuracy: "90.9%", level: 6 },
-            { rank: 5, name: "وسام علي ابراهيم الزعبي", section: "شعبة أ", score: 2780, accuracy: "88.2%", level: 6 },
-            { rank: 6, name: "أحمد رسول الزعبي", section: "شعبة أ", score: 2750, accuracy: "85.7%", level: 6 },
-            { rank: 7, name: "مهند يزن الزعبي", section: "شعبة ج", score: 2750, accuracy: "85.7%", level: 6 },
-            { rank: 8, name: "عمر باسل الزعبي", section: "شعبة ج", score: 2690, accuracy: "81.1%", level: 6 },
-            { rank: 9, name: "احمد سليمان عارف", section: "شعبة ب", score: 2690, accuracy: "81.1%", level: 6 },
-            { rank: 10, name: "عبدالله عدنان شقيرات", section: "شعبة أ", score: 2690, accuracy: "81.1%", level: 6 }
+            { rank: 1, name: "مصعب", section: "شعبة ج", score: 3000, accuracy: "100%", level: 6 },
+            { rank: 1, name: "هيثم يوسف الخطيب", section: "شعبة ب", score: 3000, accuracy: "100%", level: 6 },
+            { rank: 2, name: "محمود عدي الزعبي", section: "شعبة أ", score: 2810, accuracy: "90.9%", level: 6 },
+            { rank: 3, name: "وسام علي ابراهيم الزعبي", section: "شعبة أ", score: 2780, accuracy: "88.2%", level: 6 },
+            { rank: 4, name: "أحمد رسول الزعبي", section: "شعبة أ", score: 2750, accuracy: "85.7%", level: 6 },
+            { rank: 4, name: "مهند يزن الزعبي", section: "شعبة ج", score: 2750, accuracy: "85.7%", level: 6 },
+            { rank: 5, name: "عمر باسل الزعبي", section: "شعبة ج", score: 2690, accuracy: "81.1%", level: 6 },
+            { rank: 5, name: "احمد سليمان عارف", section: "شعبة ب", score: 2690, accuracy: "81.1%", level: 6 },
+            { rank: 5, name: "عبدالله عدنان شقيرات", section: "شعبة أ", score: 2690, accuracy: "81.1%", level: 6 }
         ];
     }
 
@@ -150,7 +150,7 @@ class TelemetryTracker {
                 if (Array.isArray(list) && list.length > 0) {
                     const hasOldPlaceholder = list.some(item => item.name === "زيد المحاسيس" || item.name === "عمر الطراونة");
                     if (!hasOldPlaceholder) {
-                        return list.slice(0, 10);
+                        return list;
                     }
                 }
             }
@@ -195,10 +195,28 @@ class TelemetryTracker {
                 if (b.score !== a.score) return b.score - a.score;
                 return (parseFloat(b.accuracy) || 0) - (parseFloat(a.accuracy) || 0);
             });
-            // Re-assign ranks and keep strictly top 10
-            list = list.slice(0, 10);
-            list.forEach((item, idx) => {
-                item.rank = idx + 1;
+
+            // Solution 1: Guarantee ALL 3,000-point champions are preserved without dropping any student,
+            // plus subsequent top ranks up to at least 10 entries (scrollable container).
+            const perfectCount = list.filter(item => item.score >= 3000).length;
+            const keepLimit = Math.max(10, perfectCount + 5);
+            list = list.slice(0, keepLimit);
+
+            // Re-assign ranks: all 3000 scores share Rank 1 (🥇)
+            let currentRank = 1;
+            let prevScore = null;
+            list.forEach((item) => {
+                if (item.score >= 3000) {
+                    item.rank = 1;
+                } else {
+                    if (prevScore === null || prevScore >= 3000) {
+                        currentRank = 2;
+                    } else if (item.score < prevScore) {
+                        currentRank++;
+                    }
+                    item.rank = currentRank;
+                }
+                prevScore = item.score;
             });
             localStorage.setItem("captain_q_public_leaderboard", JSON.stringify(list));
         } catch (e) {
@@ -219,9 +237,9 @@ class TelemetryTracker {
                 if (res.ok) {
                     const data = await res.json();
                     if (data && Array.isArray(data.leaderboard) && data.leaderboard.length > 0) {
-                        const top10 = data.leaderboard.slice(0, 10);
-                        localStorage.setItem("captain_q_public_leaderboard", JSON.stringify(top10));
-                        return { source: "cloud", data: top10 };
+                        const cloudList = data.leaderboard;
+                        localStorage.setItem("captain_q_public_leaderboard", JSON.stringify(cloudList));
+                        return { source: "cloud", data: cloudList };
                     }
                 }
             } catch (err) {
