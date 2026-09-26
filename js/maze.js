@@ -282,6 +282,58 @@ class Maze {
         return true;
     }
 
+    findShortestPath(start, goal, canPassGhostDoor = false, isGhost = true) {
+        if (!start || !goal) return [];
+        if (start.c === goal.c && start.r === goal.r) return [start];
+
+        const midRow = Math.floor(this.rows / 2);
+        const queue = [{ c: start.c, r: start.r }];
+        const visited = new Map();
+        visited.set(`${start.c},${start.r}`, null);
+
+        const dirs = [DIR.NORTH, DIR.EAST, DIR.SOUTH, DIR.WEST];
+        let found = false;
+
+        while (queue.length > 0) {
+            const curr = queue.shift();
+            if (curr.c === goal.c && curr.r === goal.r) {
+                found = true;
+                break;
+            }
+
+            for (let d of dirs) {
+                let nc = curr.c + d.dx;
+                let nr = curr.r + d.dy;
+
+                // Handle warp tunnel wrapping in BFS graph search
+                if (nr === midRow) {
+                    if (curr.c === 0 && d.dx === -1) nc = this.cols - 1;
+                    else if (curr.c === this.cols - 1 && d.dx === 1) nc = 0;
+                }
+
+                const key = `${nc},${nr}`;
+                if (!visited.has(key)) {
+                    if (this.isPassable(nc, nr, canPassGhostDoor, isGhost)) {
+                        visited.set(key, curr);
+                        queue.push({ c: nc, r: nr });
+                    }
+                }
+            }
+        }
+
+        if (!found) return [];
+
+        const path = [];
+        let curr = { c: goal.c, r: goal.r };
+        while (curr !== null) {
+            path.push(curr);
+            const k = `${curr.c},${curr.r}`;
+            curr = visited.get(k) || null;
+        }
+        path.reverse();
+        return path;
+    }
+
     getWalkableCells() {
         const list = [];
         for (let r = 1; r < this.rows - 1; r++) {

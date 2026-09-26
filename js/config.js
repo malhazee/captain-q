@@ -3,6 +3,18 @@
  * Arabic Educational Math Pacman
  */
 
+const DIR = {
+    NONE: { dx: 0, dy: 0, angle: 0, name: "NONE" },
+    NORTH: { dx: 0, dy: -1, angle: -Math.PI / 2, name: "NORTH" },
+    SOUTH: { dx: 0, dy: 1, angle: Math.PI / 2, name: "SOUTH" },
+    EAST: { dx: 1, dy: 0, angle: 0, name: "EAST" },
+    WEST: { dx: -1, dy: 0, angle: Math.PI, name: "WEST" },
+    UP: { dx: 0, dy: -1, angle: -Math.PI / 2, name: "UP" },
+    DOWN: { dx: 0, dy: 1, angle: Math.PI / 2, name: "DOWN" },
+    LEFT: { dx: -1, dy: 0, angle: Math.PI, name: "LEFT" },
+    RIGHT: { dx: 1, dy: 0, angle: 0, name: "RIGHT" }
+};
+
 const GAME_CONFIG = {
     // Canvas & Grid settings
     CANVAS_SIZE: 960,

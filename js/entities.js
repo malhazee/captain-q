@@ -3,13 +3,7 @@
  * Implements Captain Q (Player) and the 4 Ghosts with classical AI and exit routines
  */
 
-const DIR = {
-    NONE: { dx: 0, dy: 0, angle: 0 },
-    NORTH: { dx: 0, dy: -1, angle: -Math.PI / 2 },
-    SOUTH: { dx: 0, dy: 1, angle: Math.PI / 2 },
-    EAST: { dx: 1, dy: 0, angle: 0 },
-    WEST: { dx: -1, dy: 0, angle: Math.PI }
-};
+// DIR is globally provided by config.js
 
 class Player {
     constructor(startCell, tileSize, offsetX = 0, offsetY = 0) {
@@ -140,15 +134,25 @@ class Player {
         this.pixelX += this.dir.dx * this.speed;
         this.pixelY += this.dir.dy * this.speed;
 
-        // Tunnel Wrap-around
-        const minX = this.offsetX;
-        const maxX = this.offsetX + maze.cols * this.tileSize;
-        if (this.pixelX < minX) this.pixelX = maxX;
-        if (this.pixelX > maxX) this.pixelX = minX;
+        // Tunnel Wrap-around (Seamless arcade wrap)
+        const midRow = Math.floor(maze.rows / 2);
+        if (this.gridY === midRow) {
+            const minTunnelX = this.offsetX - this.tileSize * 0.5;
+            const maxTunnelX = this.offsetX + (maze.cols + 0.5) * this.tileSize;
+            if (this.dir === DIR.WEST && this.pixelX < minTunnelX) {
+                this.pixelX = maxTunnelX;
+            } else if (this.dir === DIR.EAST && this.pixelX > maxTunnelX) {
+                this.pixelX = minTunnelX;
+            }
+        }
 
         // Update grid position
         this.gridX = Math.floor((this.pixelX - this.offsetX) / this.tileSize);
         this.gridY = Math.floor((this.pixelY - this.offsetY) / this.tileSize);
+        if (this.gridY === midRow) {
+            if (this.gridX < 0) this.gridX = 0;
+            else if (this.gridX >= maze.cols) this.gridX = maze.cols - 1;
+        }
     }
 
     render(ctx, isSanctuary = false) {
@@ -256,6 +260,7 @@ class Ghost {
         this.bobAngle = Math.random() * Math.PI * 2;
         this.lastDecisionCell = null;
         this.justRegenerated = false;
+        this.eatenTimer = 0;
     }
 
     reset(spawnCell, state = "CHASE", exitDelay = 0, offsetX = this.offsetX, offsetY = this.offsetY, initialDir = DIR.NORTH) {
@@ -271,6 +276,7 @@ class Ghost {
         this.frightenedTimer = 0;
         this.lastDecisionCell = null;
         this.justRegenerated = false;
+        this.eatenTimer = 0;
     }
 
     setFrightened(durationSec) {
@@ -331,16 +337,49 @@ class Ghost {
             }
         }
 
-        const currentSpeed = this.state === "FRIGHTENED" ? this.speed * 0.65 :
-                             this.state === "EATEN" ? this.speed * 2.2 : this.speed;
+        const midRow = Math.floor(maze.rows / 2);
+        const inSideTunnel = (this.gridY === midRow && (this.gridX <= 1 || this.gridX >= maze.cols - 2));
+
+        let currentSpeed = this.state === "FRIGHTENED" ? this.speed * 0.65 :
+                           this.state === "EATEN" ? this.speed * 2.2 : this.speed;
+        if (inSideTunnel && this.state !== "EATEN") {
+            currentSpeed *= 0.6; // Classic arcade tunnel slowdown
+        }
+
+        // Failsafe for Eaten ghosts: never loop indefinitely!
+        if (this.state === "EATEN") {
+            this.eatenTimer++;
+            if (this.eatenTimer > 720) { // 12 seconds max failsafe
+                this.gridX = this.cornerCell.c;
+                this.gridY = this.cornerCell.r;
+                this.pixelX = this.offsetX + (this.cornerCell.c + 0.5) * this.tileSize;
+                this.pixelY = this.offsetY + (this.cornerCell.r + 0.5) * this.tileSize;
+                this.state = "CHASE";
+                this.eatenTimer = 0;
+                this.lastDecisionCell = null;
+                this.justRegenerated = true;
+                this.chooseNextDirection(maze, player, sanctuaryCenter);
+                return;
+            }
+        } else {
+            this.eatenTimer = 0;
+        }
 
         const cellKey = `${this.gridX},${this.gridY}`;
         const centerPixelX = this.offsetX + (this.gridX + 0.5) * this.tileSize;
         const centerPixelY = this.offsetY + (this.gridY + 0.5) * this.tileSize;
 
-        // Check if ghost reached or passed tile center
+        // Tunnel transit check: when in warp mouth moving out of bounds, do NOT turn or snap!
+        const col0Center = this.offsetX + 0.5 * this.tileSize;
+        const lastColCenter = this.offsetX + (maze.cols - 0.5) * this.tileSize;
+        const inTunnelTransit = (this.gridY === midRow && (
+            (this.dir === DIR.WEST && this.pixelX < col0Center) ||
+            (this.dir === DIR.EAST && this.pixelX > lastColCenter)
+        ));
+
+        // Check if ghost reached or passed tile center (only when inside navigable grid)
         let reachedCenter = false;
-        if (this.lastDecisionCell !== cellKey) {
+        if (!inTunnelTransit && this.lastDecisionCell !== cellKey) {
             if (this.dir === DIR.NONE) {
                 reachedCenter = true;
             } else if (this.dir === DIR.EAST && this.pixelX >= centerPixelX) {
@@ -355,7 +394,7 @@ class Ghost {
         }
 
         // Failsafe: if blocked ahead in current direction, trigger turn
-        if (!reachedCenter && this.dir !== DIR.NONE) {
+        if (!reachedCenter && !inTunnelTransit && this.dir !== DIR.NONE) {
             const nextAheadC = this.gridX + this.dir.dx;
             const nextAheadR = this.gridY + this.dir.dy;
             if (!maze.isPassable(nextAheadC, nextAheadR, this.state === "EATEN", true)) {
@@ -363,7 +402,7 @@ class Ghost {
             }
         }
 
-        if (reachedCenter) {
+        if (reachedCenter && !inTunnelTransit) {
             this.pixelX = centerPixelX;
             this.pixelY = centerPixelY;
             this.lastDecisionCell = cellKey;
@@ -373,14 +412,23 @@ class Ghost {
         this.pixelX += this.dir.dx * currentSpeed;
         this.pixelY += this.dir.dy * currentSpeed;
 
-        // Tunnel Wrap
-        const minX = this.offsetX;
-        const maxX = this.offsetX + maze.cols * this.tileSize;
-        if (this.pixelX < minX) this.pixelX = maxX;
-        if (this.pixelX > maxX) this.pixelX = minX;
+        // Seamless Arcade Tunnel Wrap
+        if (this.gridY === midRow) {
+            const minTunnelX = this.offsetX - this.tileSize * 0.5;
+            const maxTunnelX = this.offsetX + (maze.cols + 0.5) * this.tileSize;
+            if (this.dir === DIR.WEST && this.pixelX < minTunnelX) {
+                this.pixelX = maxTunnelX;
+            } else if (this.dir === DIR.EAST && this.pixelX > maxTunnelX) {
+                this.pixelX = minTunnelX;
+            }
+        }
 
         this.gridX = Math.floor((this.pixelX - this.offsetX) / this.tileSize);
         this.gridY = Math.floor((this.pixelY - this.offsetY) / this.tileSize);
+        if (this.gridY === midRow) {
+            if (this.gridX < 0) this.gridX = 0;
+            else if (this.gridX >= maze.cols) this.gridX = maze.cols - 1;
+        }
 
         // Check if Eaten ghost reached its assigned corner to regenerate
         if (this.state === "EATEN") {
@@ -388,12 +436,13 @@ class Ghost {
             const cornerPixelY = this.offsetY + (this.cornerCell.r + 0.5) * this.tileSize;
             const distToCorner = Math.hypot(this.pixelX - cornerPixelX, this.pixelY - cornerPixelY);
 
-            if (distToCorner <= currentSpeed * 2.0 || (this.gridX === this.cornerCell.c && this.gridY === this.cornerCell.r)) {
+            if (distToCorner <= Math.max(currentSpeed * 2.0, 6) || (this.gridX === this.cornerCell.c && this.gridY === this.cornerCell.r)) {
                 this.pixelX = cornerPixelX;
                 this.pixelY = cornerPixelY;
                 this.gridX = this.cornerCell.c;
                 this.gridY = this.cornerCell.r;
                 this.state = "CHASE";
+                this.eatenTimer = 0;
                 this.lastDecisionCell = null;
                 this.justRegenerated = true;
                 this.chooseNextDirection(maze, player, sanctuaryCenter);
@@ -401,27 +450,65 @@ class Ghost {
         }
     }
 
+    getDirectionFromStep(fromC, fromR, toC, toR, maze) {
+        let dc = toC - fromC;
+        let dr = toR - fromR;
+        const midRow = Math.floor(maze.rows / 2);
+        if (fromR === midRow && toR === midRow) {
+            if (fromC === 0 && toC === maze.cols - 1) dc = -1;
+            else if (fromC === maze.cols - 1 && toC === 0) dc = 1;
+        }
+        if (dc === 1 && dr === 0) return DIR.EAST;
+        if (dc === -1 && dr === 0) return DIR.WEST;
+        if (dc === 0 && dr === 1) return DIR.SOUTH;
+        if (dc === 0 && dr === -1) return DIR.NORTH;
+        return null;
+    }
+
     chooseNextDirection(maze, player, sanctuaryCenter) {
+        const midRow = Math.floor(maze.rows / 2);
+
+        // 1. If inside side tunnel, maintain direction through the tunnel (strictly no reversing)
+        if (this.gridY === midRow) {
+            if (this.gridX === 0 && this.dir === DIR.WEST) {
+                this.dir = DIR.WEST;
+                return;
+            }
+            if (this.gridX === maze.cols - 1 && this.dir === DIR.EAST) {
+                this.dir = DIR.EAST;
+                return;
+            }
+        }
+
+        // 2. EATEN STATE: Pure BFS shortest path directly to home corner (guaranteed 0% loops)
+        if (this.state === "EATEN") {
+            const path = maze.findShortestPath({ c: this.gridX, r: this.gridY }, this.cornerCell, true, true);
+            if (path && path.length >= 2) {
+                const nextStep = path[1];
+                const stepDir = this.getDirectionFromStep(this.gridX, this.gridY, nextStep.c, nextStep.r, maze);
+                if (stepDir) {
+                    this.dir = stepDir;
+                    return;
+                }
+            }
+        }
+
+        // 3. Target calculation for CHASE, SCATTER, FRIGHTENED
         let target = { c: player.gridX, r: player.gridY };
 
         if (this.state === "SCATTER") {
-            // Scatter mode: target assigned home corner
             target = this.cornerCell;
         } else if (this.state === "FRIGHTENED") {
-            // Frightened: direct evasion fleeing away from player (matching Python FrightenedBehavior)
             const dx = this.gridX - player.gridX;
             const dy = this.gridY - player.gridY;
             target = { c: this.gridX + dx * 4, r: this.gridY + dy * 4 };
-        } else if (this.state === "EATEN") {
-            // Return to assigned corner to regenerate!
-            target = this.cornerCell;
         } else {
-            // Classical Python GhostBehavior Algorithms:
+            // Classical Python GhostBehavior Algorithms
             if (this.id === 1) {
-                // Blinky (Red): Direct pursuit of player position
+                // Blinky (Red): Direct pursuit
                 target = { c: player.gridX, r: player.gridY };
             } else if (this.id === 2) {
-                // Pinky (Pink): Ambush 4 cells ahead of player
+                // Pinky (Pink): Ambush 4 cells ahead
                 target = { c: player.gridX + player.dir.dx * 4, r: player.gridY + player.dir.dy * 4 };
             } else if (this.id === 3) {
                 // Inky (Cyan): Flanking strategy offset from player and corner
@@ -429,7 +516,7 @@ class Ghost {
                 const leadY = player.gridY + player.dir.dy * 2;
                 target = { c: leadX * 2 - this.cornerCell.c, r: leadY * 2 - this.cornerCell.r };
             } else if (this.id === 4) {
-                // Clyde (Orange): Distance-dependent strategy (chases when far > 4 cells, retreats when close)
+                // Clyde (Orange): Distance-dependent strategy
                 const distSq = (this.gridX - player.gridX) ** 2 + (this.gridY - player.gridY) ** 2;
                 target = (distSq > 16) ? { c: player.gridX, r: player.gridY } : this.cornerCell;
             }
@@ -439,11 +526,16 @@ class Ghost {
         const candidates = [DIR.NORTH, DIR.EAST, DIR.SOUTH, DIR.WEST];
 
         for (let d of candidates) {
-            // Avoid immediate reverse at standard intersection
+            // Avoid immediate reverse at normal intersection
             if (d.dx === -this.dir.dx && d.dy === -this.dir.dy) continue;
 
-            const nextC = this.gridX + d.dx;
-            const nextR = this.gridY + d.dy;
+            let nextC = this.gridX + d.dx;
+            let nextR = this.gridY + d.dy;
+            if (nextR === midRow) {
+                if (this.gridX === 0 && d.dx === -1) nextC = maze.cols - 1;
+                else if (this.gridX === maze.cols - 1 && d.dx === 1) nextC = 0;
+            }
+
             const canPassDoor = (this.state === "EATEN");
 
             // Bar active roaming ghosts from entering the safe sanctuary
@@ -452,9 +544,23 @@ class Ghost {
             }
 
             if (maze.isPassable(nextC, nextR, canPassDoor, true)) {
-                // Squared distance to target (matching Python _find_closest_direction)
                 const dist = (nextC - target.c) ** 2 + (nextR - target.r) ** 2;
                 validDirs.push({ dir: d, dist });
+            }
+        }
+
+        // Try BFS shortest path first if target is a valid corridor (matches Python ghost_behavior.py)
+        if (this.state === "CHASE" || this.state === "SCATTER") {
+            if (maze.isPassable(target.c, target.r, false, true)) {
+                const path = maze.findShortestPath({ c: this.gridX, r: this.gridY }, target, false, true);
+                if (path && path.length >= 2) {
+                    const nextStep = path[1];
+                    const stepDir = this.getDirectionFromStep(this.gridX, this.gridY, nextStep.c, nextStep.r, maze);
+                    if (stepDir && validDirs.some(vd => vd.dir.dx === stepDir.dx && vd.dir.dy === stepDir.dy)) {
+                        this.dir = stepDir;
+                        return;
+                    }
+                }
             }
         }
 
@@ -464,8 +570,12 @@ class Ghost {
         } else {
             // Dead-end fallback
             for (let d of candidates) {
-                const nextC = this.gridX + d.dx;
-                const nextR = this.gridY + d.dy;
+                let nextC = this.gridX + d.dx;
+                let nextR = this.gridY + d.dy;
+                if (nextR === midRow) {
+                    if (this.gridX === 0 && d.dx === -1) nextC = maze.cols - 1;
+                    else if (this.gridX === maze.cols - 1 && d.dx === 1) nextC = 0;
+                }
                 if (this.state !== "EATEN" && maze.isSanctuary(nextC, nextR)) continue;
                 if (maze.isPassable(nextC, nextR, this.state === "EATEN", true)) {
                     this.dir = d;
