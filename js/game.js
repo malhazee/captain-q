@@ -195,6 +195,9 @@ class CaptainQGame {
         this.mazeOffsetX = Math.floor((this.canvas.width - this.maze.cols * tileSize) / 2);
         this.mazeOffsetY = Math.floor(HUD_HEIGHT + (availHeight - this.maze.rows * tileSize) / 2);
 
+        // Pre-render static maze walls & sanctuary offscreen for blazing-fast 60 FPS mobile performance
+        this.prerenderMaze();
+
         // Player
         const pSpawn = this.maze.getPlayerSpawn();
         const prevPermanentShield = this.player ? this.player.permanentShield : false;
@@ -228,6 +231,83 @@ class CaptainQGame {
         // Mission & Collectibles
         this.missionMgr.loadLevel(this.levelIndex, this.maze);
         this.levelTimer = GAME_CONFIG.LEVEL_TIME_LIMIT;
+    }
+
+    prerenderMaze() {
+        if (!this.mazeCanvas) {
+            this.mazeCanvas = document.createElement("canvas");
+        }
+        this.mazeCanvas.width = this.canvas.width;
+        this.mazeCanvas.height = this.canvas.height;
+        const ctx = this.mazeCanvas.getContext("2d");
+
+        const ts = this.tileSize;
+        const cols = this.maze.cols;
+        const rows = this.maze.rows;
+
+        // Background
+        ctx.fillStyle = "#070d1e";
+        ctx.fillRect(0, 0, this.mazeCanvas.width, this.mazeCanvas.height);
+
+        // Central Safe Sanctuary Floor Hologram (مساحة الملاذ الآمن)
+        const cx = Math.floor(cols / 2);
+        const cy = Math.floor(rows / 2);
+        const sx = this.mazeOffsetX + (cx - 2) * ts;
+        const sy = this.mazeOffsetY + (cy - 1) * ts;
+        const sw = 5 * ts;
+        const sh = 3 * ts;
+
+        ctx.save();
+        const sGrad = ctx.createRadialGradient(
+            sx + sw / 2, sy + sh / 2, ts * 0.4,
+            sx + sw / 2, sy + sh / 2, sw * 0.6
+        );
+        sGrad.addColorStop(0, "rgba(16, 185, 129, 0.22)");
+        sGrad.addColorStop(1, "rgba(6, 78, 59, 0.06)");
+        ctx.fillStyle = sGrad;
+        ctx.beginPath();
+        ctx.roundRect(sx, sy, sw, sh, 8);
+        ctx.fill();
+
+        // Neon emerald dashed border
+        ctx.strokeStyle = "rgba(52, 211, 153, 0.65)";
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(sx + 2, sy + 2, sw - 4, sh - 4);
+        ctx.setLineDash([]);
+
+        // Sanctuary Label Badge
+        ctx.fillStyle = "rgba(52, 211, 153, 0.85)";
+        ctx.font = `bold ${Math.round(ts * 0.35)}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("🛡️ ملاذ آمن", sx + sw / 2, sy + sh / 2);
+        ctx.restore();
+
+        // Walls
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const cell = this.maze.grid[r][c];
+                const px = this.mazeOffsetX + c * ts;
+                const py = this.mazeOffsetY + r * ts;
+
+                if (cell === 1) {
+                    ctx.fillStyle = "#0c1a3a";
+                    ctx.fillRect(px, py, ts, ts);
+
+                    ctx.strokeStyle = "#3b82f6";
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(px + 1, py + 1, ts - 2, ts - 2);
+
+                    ctx.fillStyle = "rgba(59, 130, 246, 0.15)";
+                    ctx.fillRect(px + 4, py + 4, ts - 8, ts - 8);
+                } else if (cell === 3) {
+                    // Ghost Door beam
+                    ctx.fillStyle = "rgba(244, 114, 182, 0.85)";
+                    ctx.fillRect(px, py + ts * 0.4, ts, ts * 0.2);
+                }
+            }
+        }
     }
 
     toggleShield() {
@@ -300,8 +380,12 @@ class CaptainQGame {
             return;
         }
 
+        // Speed normalization for consistent speed across all devices (PC 144Hz vs Mobile 30-60Hz)
+        const clampedDt = Math.min(Math.max(dt, 0.001), 0.05);
+        const speedFactor = clampedDt * 60;
+
         // Update player
-        this.player.update(this.maze);
+        this.player.update(this.maze, speedFactor);
 
         // Update collectibles & check collection
         const colRes = this.missionMgr.checkCollisions(this.player, this.telemetry);
@@ -334,7 +418,7 @@ class CaptainQGame {
         const gHouse = { c: cx, r: cy };
 
         for (let ghost of this.ghosts) {
-            ghost.update(this.maze, this.player, gHouse);
+            ghost.update(this.maze, this.player, gHouse, speedFactor);
 
             // Announce regeneration when ghost arrives back at corner
             if (ghost.justRegenerated) {
@@ -345,6 +429,11 @@ class CaptainQGame {
 
             // Safe Sanctuary Immunity: player inside sanctuary is 100% immune from ghost attacks
             if (this.maze.isSanctuary(this.player.gridX, this.player.gridY)) {
+                continue;
+            }
+
+            // Eaten ghost (eyes returning to corner) is completely untouchable / immune!
+            if (ghost.state === "EATEN") {
                 continue;
             }
 
@@ -460,73 +549,10 @@ class CaptainQGame {
     }
 
     renderMaze(ctx) {
-        const ts = this.tileSize;
-        const cols = this.maze.cols;
-        const rows = this.maze.rows;
-
-        // Background
-        ctx.fillStyle = "#070d1e";
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Central Safe Sanctuary Floor Hologram (مساحة الملاذ الآمن)
-        const cx = Math.floor(cols / 2);
-        const cy = Math.floor(rows / 2);
-        const sx = this.mazeOffsetX + (cx - 2) * ts;
-        const sy = this.mazeOffsetY + (cy - 1) * ts;
-        const sw = 5 * ts;
-        const sh = 3 * ts;
-
-        ctx.save();
-        const sGrad = ctx.createRadialGradient(
-            sx + sw / 2, sy + sh / 2, ts * 0.4,
-            sx + sw / 2, sy + sh / 2, sw * 0.6
-        );
-        sGrad.addColorStop(0, "rgba(16, 185, 129, 0.22)");
-        sGrad.addColorStop(1, "rgba(6, 78, 59, 0.06)");
-        ctx.fillStyle = sGrad;
-        ctx.beginPath();
-        ctx.roundRect(sx, sy, sw, sh, 8);
-        ctx.fill();
-
-        // Neon emerald dashed border
-        ctx.strokeStyle = "rgba(52, 211, 153, 0.65)";
-        ctx.lineWidth = 1.6;
-        ctx.setLineDash([6, 4]);
-        ctx.strokeRect(sx + 2, sy + 2, sw - 4, sh - 4);
-        ctx.setLineDash([]);
-
-        // Sanctuary Label Badge
-        ctx.fillStyle = "rgba(52, 211, 153, 0.85)";
-        ctx.font = `bold ${Math.round(ts * 0.35)}px system-ui, sans-serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("🛡️ ملاذ آمن", sx + sw / 2, sy + sh / 2 + (this.ghosts.some(g => g.state === "WAITING") ? ts * 0.95 : 0));
-        ctx.restore();
-
-        // Walls
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const cell = this.maze.grid[r][c];
-                const px = this.mazeOffsetX + c * ts;
-                const py = this.mazeOffsetY + r * ts;
-
-                if (cell === 1) {
-                    ctx.fillStyle = "#0c1a3a";
-                    ctx.fillRect(px, py, ts, ts);
-
-                    ctx.strokeStyle = "#3b82f6";
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(px + 1, py + 1, ts - 2, ts - 2);
-
-                    ctx.fillStyle = "rgba(59, 130, 246, 0.15)";
-                    ctx.fillRect(px + 4, py + 4, ts - 8, ts - 8);
-                } else if (cell === 3) {
-                    // Ghost Door beam
-                    ctx.fillStyle = "rgba(244, 114, 182, 0.85)";
-                    ctx.fillRect(px, py + ts * 0.4, ts, ts * 0.2);
-                }
-            }
+        if (!this.mazeCanvas) {
+            this.prerenderMaze();
         }
+        ctx.drawImage(this.mazeCanvas, 0, 0);
     }
 
     renderCollectibles(ctx) {
@@ -741,7 +767,7 @@ class CaptainQGame {
         // Traps Section
         ctx.fillStyle = "#f87171";
         ctx.font = "bold 17px system-ui, sans-serif";
-        ctx.fillText("❌ الإجابات الخاطئة / التمويهات (تجنبها - 0 نقطة):", this.canvas.width / 2, cy + 280);
+        ctx.fillText("❌ الإجابات الخاطئة / التمويهات (تجنبها - عقوبة -30 نقطة):", this.canvas.width / 2, cy + 280);
 
         const traps = curLvl.traps || [];
         const totalTrapsW = traps.length * chipW + (traps.length - 1) * chipGap;
@@ -879,7 +905,7 @@ class CaptainQGame {
             { label: "مجموع النقاط (إجابات صحيحة)", val: `${this.score} نقطة`, col: "#38bdf8" },
             { label: "نسبة الدقة الرياضية", val: `${this.telemetry.getAccuracyRate()}`, col: "#34d399" },
             { label: "الإجابات الصحيحة الملتقطة", val: `+${this.telemetry.getCorrectCount()} صحيحة`, col: "#4ade80" },
-            { label: "التمويهات الخاطئة (0 نقطة)", val: `${this.telemetry.getWrongCount()} أخطاء`, col: "#f87171" }
+            { label: "التمويهات الخاطئة (-30 نقطة)", val: `${this.telemetry.getWrongCount()} أخطاء`, col: "#f87171" }
         ];
 
         const mBoxW = 320;

@@ -24,7 +24,7 @@ const GAME_CONFIG = {
     // Gameplay rules: points strictly on correct answers, everything else is 0
     INITIAL_LIVES: 3,
     POINTS_PER_TARGET: 100,
-    PENALTY_PER_TRAP: 0,
+    PENALTY_PER_TRAP: -30,
     POINTS_PER_DOT: 0,
     POINTS_PER_SUPER_DOT: 0,
     POINTS_PER_GHOST: 0,

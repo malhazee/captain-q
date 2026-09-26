@@ -65,9 +65,9 @@ class Player {
         this.nextDir = direction;
     }
 
-    update(maze) {
+    update(maze, speedFactor = 1.0) {
         if (!this.permanentShield && this.shieldTimer > 0) {
-            this.shieldTimer--;
+            this.shieldTimer -= speedFactor;
         }
 
         // Mouth animation calibrated to slower calm speed
@@ -83,7 +83,7 @@ class Player {
 
         const centerPixelX = this.offsetX + (this.gridX + 0.5) * this.tileSize;
         const centerPixelY = this.offsetY + (this.gridY + 0.5) * this.tileSize;
-        const distToCenter = Math.hypot(this.pixelX - centerPixelX, this.pixelY - centerPixelY);
+        const stepSpeed = this.speed * speedFactor;
 
         // Immediate 180-degree reverse anywhere
         if (this.nextDir !== DIR.NONE && this.nextDir.dx === -this.dir.dx && this.nextDir.dy === -this.dir.dy) {
@@ -103,26 +103,31 @@ class Player {
             }
         }
 
-        // Turn check at tile center
-        if (distToCenter <= this.speed) {
-            // Check nextDir
-            if (this.nextDir !== DIR.NONE && this.nextDir !== this.dir) {
-                const targetC = this.gridX + this.nextDir.dx;
-                const targetR = this.gridY + this.nextDir.dy;
-                if (maze.isPassable(targetC, targetR, false)) {
+        // Responsive Corner Buffering: turn into adjacent opening when approaching or at tile center
+        const turnTolerance = Math.max(stepSpeed * 2.2, this.tileSize * 0.44);
+        if (this.nextDir !== DIR.NONE && this.nextDir !== this.dir) {
+            const targetC = this.gridX + this.nextDir.dx;
+            const targetR = this.gridY + this.nextDir.dy;
+            if (maze.isPassable(targetC, targetR, false)) {
+                const perpDist = this.dir.dx !== 0 ? Math.abs(this.pixelX - centerPixelX) : Math.abs(this.pixelY - centerPixelY);
+                if (perpDist <= turnTolerance || this.dir === DIR.NONE) {
                     this.dir = this.nextDir;
                     this.facingDir = this.dir;
                     this.nextDir = DIR.NONE;
-                    this.pixelX = centerPixelX;
-                    this.pixelY = centerPixelY;
+                    // Snap perpendicular coordinate to center of corridor for ultra-smooth glide
+                    if (this.dir.dx !== 0) this.pixelY = centerPixelY;
+                    else this.pixelX = centerPixelX;
                 }
             }
+        }
 
-            // Check if current dir is blocked
-            if (this.dir !== DIR.NONE) {
-                const targetC = this.gridX + this.dir.dx;
-                const targetR = this.gridY + this.dir.dy;
-                if (!maze.isPassable(targetC, targetR, false)) {
+        // Check if current dir is blocked ahead
+        if (this.dir !== DIR.NONE) {
+            const aheadC = this.gridX + this.dir.dx;
+            const aheadR = this.gridY + this.dir.dy;
+            if (!maze.isPassable(aheadC, aheadR, false)) {
+                const distToC = this.dir.dx !== 0 ? (this.pixelX - centerPixelX) * this.dir.dx : (this.pixelY - centerPixelY) * this.dir.dy;
+                if (distToC >= 0) {
                     this.dir = DIR.NONE;
                     this.pixelX = centerPixelX;
                     this.pixelY = centerPixelY;
@@ -130,9 +135,9 @@ class Player {
             }
         }
 
-        // Apply movement
-        this.pixelX += this.dir.dx * this.speed;
-        this.pixelY += this.dir.dy * this.speed;
+        // Apply movement scaled by speedFactor (identical speed on all refresh rates & devices)
+        this.pixelX += this.dir.dx * stepSpeed;
+        this.pixelY += this.dir.dy * stepSpeed;
 
         // Tunnel Wrap-around (Seamless arcade wrap)
         const midRow = Math.floor(maze.rows / 2);
@@ -286,14 +291,14 @@ class Ghost {
         }
     }
 
-    update(maze, player, sanctuaryCenter) {
+    update(maze, player, sanctuaryCenter, speedFactor = 1.0) {
         const cx = sanctuaryCenter.c;
         const cy = sanctuaryCenter.r;
 
         // 1. If WAITING inside house:
         if (this.state === "WAITING") {
-            this.exitDelay--;
-            this.bobAngle += 0.08;
+            this.exitDelay -= speedFactor;
+            this.bobAngle += 0.08 * speedFactor;
             this.pixelY = this.offsetY + (this.gridY + 0.5) * this.tileSize + Math.sin(this.bobAngle) * 3;
             if (this.exitDelay <= 0) {
                 this.state = "EXITING";
@@ -306,15 +311,16 @@ class Ghost {
             const exitR = cy - 3;
             const centerTargetX = this.offsetX + (cx + 0.5) * this.tileSize;
             const exitTargetY = this.offsetY + (exitR + 0.5) * this.tileSize;
+            const exitStep = 1.0 * speedFactor;
 
             // Center horizontally first
-            if (Math.abs(this.pixelX - centerTargetX) > 1.0) {
-                this.pixelX += Math.sign(centerTargetX - this.pixelX) * 1.0;
+            if (Math.abs(this.pixelX - centerTargetX) > exitStep) {
+                this.pixelX += Math.sign(centerTargetX - this.pixelX) * exitStep;
                 this.dir = centerTargetX > this.pixelX ? DIR.EAST : DIR.WEST;
             } else {
                 this.pixelX = centerTargetX;
                 this.dir = DIR.NORTH;
-                this.pixelY -= 1.0; // Move up through door
+                this.pixelY -= exitStep; // Move up through door
                 if (this.pixelY <= exitTargetY) {
                     this.pixelY = exitTargetY;
                     this.gridX = cx;
@@ -331,7 +337,7 @@ class Ghost {
 
         // 3. Normal roaming (CHASE, SCATTER, FRIGHTENED, EATEN)
         if (this.state === "FRIGHTENED") {
-            this.frightenedTimer--;
+            this.frightenedTimer -= speedFactor;
             if (this.frightenedTimer <= 0) {
                 this.state = "CHASE";
             }
@@ -346,9 +352,11 @@ class Ghost {
             currentSpeed *= 0.6; // Classic arcade tunnel slowdown
         }
 
+        const stepSpeed = currentSpeed * speedFactor;
+
         // Failsafe for Eaten ghosts: never loop indefinitely!
         if (this.state === "EATEN") {
-            this.eatenTimer++;
+            this.eatenTimer += speedFactor;
             if (this.eatenTimer > 720) { // 12 seconds max failsafe
                 this.gridX = this.cornerCell.c;
                 this.gridY = this.cornerCell.r;
@@ -409,8 +417,8 @@ class Ghost {
             this.chooseNextDirection(maze, player, sanctuaryCenter);
         }
 
-        this.pixelX += this.dir.dx * currentSpeed;
-        this.pixelY += this.dir.dy * currentSpeed;
+        this.pixelX += this.dir.dx * stepSpeed;
+        this.pixelY += this.dir.dy * stepSpeed;
 
         // Seamless Arcade Tunnel Wrap
         if (this.gridY === midRow) {
@@ -436,7 +444,7 @@ class Ghost {
             const cornerPixelY = this.offsetY + (this.cornerCell.r + 0.5) * this.tileSize;
             const distToCorner = Math.hypot(this.pixelX - cornerPixelX, this.pixelY - cornerPixelY);
 
-            if (distToCorner <= Math.max(currentSpeed * 2.0, 6) || (this.gridX === this.cornerCell.c && this.gridY === this.cornerCell.r)) {
+            if (distToCorner <= Math.max(stepSpeed * 2.0, 6) || (this.gridX === this.cornerCell.c && this.gridY === this.cornerCell.r)) {
                 this.pixelX = cornerPixelX;
                 this.pixelY = cornerPixelY;
                 this.gridX = this.cornerCell.c;
