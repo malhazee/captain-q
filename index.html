@@ -29,7 +29,7 @@ async def custom_site():
     platform.window.canvas.style.visibility = "visible"
 
 
-    bundle = "captain_q_v8"
+    bundle = "captain_q_v9"
 
     # the C or js loader could do that but be explicit.
     appdir = Path(f"/data/data/{bundle}")
@@ -39,12 +39,12 @@ async def custom_site():
     # unpack filesystem from compressed archive into work dir
     if platform.window.location.host.find('.itch.zone')>0:
         import zipfile
-        async with platform.fopen("web_app.apk?v=8", "rb") as archive:
+        async with platform.fopen("web_app.apk?v=9", "rb") as archive:
             with zipfile.ZipFile(archive) as zip_ref:
                 zip_ref.extractall(appdir.as_posix())
     else:
         import tarfile
-        async with platform.fopen("web_app.tar.gz?v=8", "rb") as archive:
+        async with platform.fopen("web_app.tar.gz?v=9", "rb") as archive:
             tar = tarfile.open(fileobj=archive, mode="r:gz")
             tar.extractall(path=appdir.as_posix(), filter='tar')
             tar.close()
@@ -75,6 +75,10 @@ async def custom_site():
 
 
     def ui_callback(pkg):
+        try:
+            platform.window.document.getElementById("loader_status_txt").innerText = f"جاري تجهيز {pkg}... ⏳"
+        except Exception:
+            pass
         platform.window.infobox.innerText = f"installing {pkg}"
 
     await shell.source(main, callback=ui_callback)
@@ -82,6 +86,12 @@ async def custom_site():
     # if you don't reach that step
     # your main.py has an infinite sync loop somewhere !
 
+    try:
+        loader_el = platform.window.document.getElementById("game_loader_overlay")
+        if loader_el:
+            loader_el.style.display = "none"
+    except Exception:
+        pass
     platform.window.infobox.style.display = "none"
     platform.window.config.gui_divider = 1
     platform.window.window_resize()
@@ -135,8 +145,8 @@ asyncio.run( custom_site() )
 config = {
     xtermjs : "1" ,
     _sdl2 : "canvas",
-    user_canvas : 1,
-    user_canvas_managed : 1,
+    user_canvas : 0,
+    user_canvas_managed : 0,
     gui_divider : 1,
     ume_block : 0,
     can_close : 0,
@@ -267,7 +277,20 @@ function show_infobox() {
         </div>
     </div>
 
-
+    <!-- Independent Loader Overlay: Always visible until main.py starts -->
+    <div id="game_loader_overlay" style="position: absolute; top: 2px; left: 0; right: 0; margin: 0 auto; width: min(100vw, 52vh, 480px); height: min(100vw, 52vh, 480px); background: #0c1430; z-index: 25; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; border: 2px solid #3b82f6; color: #fff; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 18px; box-sizing: border-box; box-shadow: 0 8px 32px rgba(0,0,0,0.8);">
+        <div style="font-size: 26px; font-weight: 900; color: #60a5fa; margin-bottom: 4px; text-shadow: 0 0 10px rgba(96,165,250,0.5);">🎮 كابتن كيو (Captain-Q)</div>
+        <div style="font-size: 14px; font-weight: bold; color: #ffd700; margin-bottom: 12px;">مبادرة الرياضيات - الصف السابع</div>
+        <div style="width: 44px; height: 44px; border: 4px solid rgba(255,215,0,0.15); border-top-color: #ffd700; border-radius: 50%; animation: spinLoader 0.9s linear infinite; margin-bottom: 14px;"></div>
+        <div id="loader_status_txt" style="font-size: 14px; color: #93c5fd; font-weight: bold;">جاري تحميل المتاهة وتجهيز الألعاب... ⏳</div>
+        <div style="font-size: 12px; color: #94a3b8; margin-top: 10px; line-height: 1.5;">التحميل لأول مرة فقط (يرجى الانتظار ثوانٍ).<br>إذا طال التحميل، تأكد من فتح الرابط عبر متصفح <b>Chrome</b>.</div>
+    </div>
+    <style>
+        @keyframes spinLoader {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 
     <canvas class="emscripten" id="canvas"
 width="1px"
@@ -797,7 +820,8 @@ frameborder="1"
             frozenCanvasHeight = null;
         }
 
-        window.openMobileRegistration = function() {
+        window.openMobileRegistration = function(force) {
+            if (window.hasLaunchedGame && !force) return;
             // Freeze canvas BEFORE showing modal/keyboard
             freezeCanvas();
             modalIsOpen = true;
@@ -818,11 +842,11 @@ frameborder="1"
         if (regBtn) {
             regBtn.addEventListener('click', (e) => {
                 e.preventDefault();
-                window.openMobileRegistration();
+                window.openMobileRegistration(true);
             });
             regBtn.addEventListener('touchend', (e) => {
                 e.preventDefault();
-                window.openMobileRegistration();
+                window.openMobileRegistration(true);
             });
         }
 
@@ -884,6 +908,8 @@ frameborder="1"
             // Store directly in window object for Python GameState bridge
             window.activeStudentName = name;
             window.activeStudentSection = sec;
+            window.hasLaunchedGame = true;
+            window.mobileLaunchRequested = true;
 
             // 1. Instantly drop the soft keyboard by blurring ALL elements
             if (input) {
@@ -921,11 +947,12 @@ frameborder="1"
             // 3. Block ALL resize events for the next 2.5 seconds
             blockResizeUntil = Date.now() + 2500;
 
-            // 4. Wait 500ms for keyboard to FULLY dismiss (iOS needs up to 400ms)
+            // 4. Wait 180ms for keyboard to drop, then hide modal cleanly
             setTimeout(() => {
                 // 5. Hide modal
                 modal.style.display = 'none';
                 modalIsOpen = false;
+                unfreezeCanvas();
 
                 // 6. Restore input for potential re-use
                 if (input) input.readOnly = false;
@@ -939,22 +966,19 @@ frameborder="1"
                 enforceViewportReset();
                 forceCanvasConstraints();
 
-                // 8. After one more frame, stabilize and start the game
-                setTimeout(() => {
-                    enforceViewportReset();
-                    forceCanvasConstraints();
-                    triggerKey('Enter', 13, 'Enter');
+                // 8. Bridge trigger & synthetic Enter key
+                window.mobileLaunchRequested = true;
+                triggerKey('Enter', 13, 'Enter');
 
-                    // 9. Keep forcing constraints for 2 more seconds to beat any delayed Pygbag resize
-                    const forceInterval = setInterval(() => {
-                        forceCanvasConstraints();
-                    }, 200);
-                    setTimeout(() => {
-                        clearInterval(forceInterval);
-                        isSubmittingProfile = false;
-                    }, 2000);
-                }, 120);
-            }, 500);
+                // 9. Keep forcing constraints for 2 more seconds to beat any delayed Pygbag resize
+                const forceInterval = setInterval(() => {
+                    forceCanvasConstraints();
+                }, 200);
+                setTimeout(() => {
+                    clearInterval(forceInterval);
+                    isSubmittingProfile = false;
+                }, 2000);
+            }, 180);
         }
 
         // Swipe Gestures on Screen
