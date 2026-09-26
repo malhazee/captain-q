@@ -160,24 +160,20 @@ class CaptainQGame {
         this.player.permanentShield = prevPermanentShield;
         this.player.speed = levelConfig.playerSpeed || 1.35;
 
-        // Ghosts: Spaced out across house & entrance so all 4 ghosts are visible and roam!
-        const cx = Math.floor(this.maze.cols / 2);
-        const cy = Math.floor(this.maze.rows / 2);
-
+        // Ghosts: Start from the 4 outer corners!
         const gColors = [
-            { id: 1, name: "بلينكي", color: "#ef4444", corner: { c: this.maze.cols - 2, r: 1 }, spawn: { c: cx, r: cy - 3 }, state: "CHASE", exitDelay: 0 },
-            { id: 2, name: "بينكي", color: "#f472b6", corner: { c: 1, r: 1 }, spawn: { c: cx, r: cy }, state: "WAITING", exitDelay: 45 },
-            { id: 3, name: "إنكي", color: "#06b6d4", corner: { c: this.maze.cols - 2, r: this.maze.rows - 2 }, spawn: { c: cx - 1, r: cy }, state: "WAITING", exitDelay: 150 },
-            { id: 4, name: "كلايد", color: "#f97316", corner: { c: 1, r: this.maze.rows - 2 }, spawn: { c: cx + 1, r: cy }, state: "WAITING", exitDelay: 270 }
+            { id: 1, name: "بلينكي", color: "#ef4444", ...this.maze.getCornerSpawn(1) },
+            { id: 2, name: "بينكي", color: "#f472b6", ...this.maze.getCornerSpawn(2) },
+            { id: 3, name: "إنكي", color: "#06b6d4", ...this.maze.getCornerSpawn(3) },
+            { id: 4, name: "كلايد", color: "#f97316", ...this.maze.getCornerSpawn(4) }
         ];
 
         this.ghosts = [];
-        const count = 4; // Always spawn all 4 ghosts (Blinky, Pinky, Inky, Clyde)
-
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < 4; i++) {
             const gInfo = gColors[i];
-            const g = new Ghost(gInfo.id, gInfo.name, gInfo.color, gInfo.corner, tileSize, this.mazeOffsetX, this.mazeOffsetY);
-            g.reset(gInfo.spawn, gInfo.state, gInfo.exitDelay, this.mazeOffsetX, this.mazeOffsetY);
+            const corner = { c: gInfo.c, r: gInfo.r };
+            const g = new Ghost(gInfo.id, gInfo.name, gInfo.color, corner, tileSize, this.mazeOffsetX, this.mazeOffsetY, gInfo.dir);
+            g.reset(corner, "CHASE", 0, this.mazeOffsetX, this.mazeOffsetY, gInfo.dir);
             g.speed = levelConfig.ghostSpeed || 0.85;
             this.ghosts.push(g);
         }
@@ -292,6 +288,13 @@ class CaptainQGame {
         for (let ghost of this.ghosts) {
             ghost.update(this.maze, this.player, gHouse);
 
+            // Announce regeneration when ghost arrives back at corner
+            if (ghost.justRegenerated) {
+                ghost.justRegenerated = false;
+                audio.playTarget();
+                this.missionMgr.addFloatingText(ghost.pixelX, ghost.pixelY, `✨ تجدد ${ghost.name}!`, ghost.color);
+            }
+
             // Safe Sanctuary Immunity: player inside sanctuary is 100% immune from ghost attacks
             if (this.maze.isSanctuary(this.player.gridX, this.player.gridY)) {
                 continue;
@@ -332,22 +335,14 @@ class CaptainQGame {
             this.state = "GAME_OVER";
             this.telemetry.sendFinalReport(`انتهت المحاولات (${reason})`);
         } else {
-            // Respawn player and ghosts
+            // Respawn player in center and ghosts at their 4 corners
             const pSpawn = this.maze.getPlayerSpawn();
             this.player.reset(pSpawn, this.mazeOffsetX, this.mazeOffsetY);
 
-            const cx = Math.floor(this.maze.cols / 2);
-            const cy = Math.floor(this.maze.rows / 2);
-            const gSpawns = [
-                { spawn: { c: cx, r: cy - 3 }, state: "CHASE", exitDelay: 0 },
-                { spawn: { c: cx, r: cy }, state: "WAITING", exitDelay: 45 },
-                { spawn: { c: cx - 1, r: cy }, state: "WAITING", exitDelay: 150 },
-                { spawn: { c: cx + 1, r: cy }, state: "WAITING", exitDelay: 270 }
-            ];
-
-            this.ghosts.forEach((g, idx) => {
-                const info = gSpawns[idx] || gSpawns[0];
-                g.reset(info.spawn, info.state, info.exitDelay, this.mazeOffsetX, this.mazeOffsetY);
+            this.ghosts.forEach((g) => {
+                const cornerSpawn = this.maze.getCornerSpawn(g.id);
+                const corner = { c: cornerSpawn.c, r: cornerSpawn.r };
+                g.reset(corner, "CHASE", 0, this.mazeOffsetX, this.mazeOffsetY, cornerSpawn.dir);
             });
             this.startLevelIntro();
         }

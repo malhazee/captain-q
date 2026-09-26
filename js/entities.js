@@ -233,7 +233,7 @@ class Player {
 }
 
 class Ghost {
-    constructor(id, name, color, cornerCell, tileSize, offsetX = 0, offsetY = 0) {
+    constructor(id, name, color, cornerCell, tileSize, offsetX = 0, offsetY = 0, initialDir = DIR.NORTH) {
         this.id = id;
         this.name = name;
         this.color = color;
@@ -247,7 +247,7 @@ class Ghost {
         this.pixelX = this.offsetX + (this.gridX + 0.5) * tileSize;
         this.pixelY = this.offsetY + (this.gridY + 0.5) * tileSize;
 
-        this.dir = DIR.NORTH;
+        this.dir = initialDir;
         this.speed = 0.85; // tuned smooth ghost speed
         this.state = "CHASE"; // WAITING, EXITING, CHASE, SCATTER, FRIGHTENED, EATEN
         this.exitDelay = 0;
@@ -255,20 +255,22 @@ class Ghost {
         this.radius = tileSize * 0.42;
         this.bobAngle = Math.random() * Math.PI * 2;
         this.lastDecisionCell = null;
+        this.justRegenerated = false;
     }
 
-    reset(spawnCell, state = "CHASE", exitDelay = 0, offsetX = this.offsetX, offsetY = this.offsetY) {
+    reset(spawnCell, state = "CHASE", exitDelay = 0, offsetX = this.offsetX, offsetY = this.offsetY, initialDir = DIR.NORTH) {
         this.offsetX = offsetX;
         this.offsetY = offsetY;
         this.gridX = spawnCell.c;
         this.gridY = spawnCell.r;
         this.pixelX = this.offsetX + (this.gridX + 0.5) * this.tileSize;
         this.pixelY = this.offsetY + (this.gridY + 0.5) * this.tileSize;
-        this.dir = DIR.NORTH;
+        this.dir = initialDir;
         this.state = state;
         this.exitDelay = exitDelay;
         this.frightenedTimer = 0;
         this.lastDecisionCell = null;
+        this.justRegenerated = false;
     }
 
     setFrightened(durationSec) {
@@ -380,10 +382,21 @@ class Ghost {
         this.gridX = Math.floor((this.pixelX - this.offsetX) / this.tileSize);
         this.gridY = Math.floor((this.pixelY - this.offsetY) / this.tileSize);
 
-        // Check if Eaten reached sanctuary door
+        // Check if Eaten ghost reached its assigned corner to regenerate
         if (this.state === "EATEN") {
-            if (this.gridX === cx && (this.gridY === cy - 2 || this.gridY === cy - 3)) {
-                this.state = "EXITING";
+            const cornerPixelX = this.offsetX + (this.cornerCell.c + 0.5) * this.tileSize;
+            const cornerPixelY = this.offsetY + (this.cornerCell.r + 0.5) * this.tileSize;
+            const distToCorner = Math.hypot(this.pixelX - cornerPixelX, this.pixelY - cornerPixelY);
+
+            if (distToCorner <= currentSpeed * 2.0 || (this.gridX === this.cornerCell.c && this.gridY === this.cornerCell.r)) {
+                this.pixelX = cornerPixelX;
+                this.pixelY = cornerPixelY;
+                this.gridX = this.cornerCell.c;
+                this.gridY = this.cornerCell.r;
+                this.state = "CHASE";
+                this.lastDecisionCell = null;
+                this.justRegenerated = true;
+                this.chooseNextDirection(maze, player, sanctuaryCenter);
             }
         }
     }
@@ -400,7 +413,8 @@ class Ghost {
             const dy = this.gridY - player.gridY;
             target = { c: this.gridX + dx * 4, r: this.gridY + dy * 4 };
         } else if (this.state === "EATEN") {
-            target = { c: sanctuaryCenter.c, r: sanctuaryCenter.r - 2 };
+            // Return to assigned corner to regenerate!
+            target = this.cornerCell;
         } else {
             // Classical Python GhostBehavior Algorithms:
             if (this.id === 1) {

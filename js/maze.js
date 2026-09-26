@@ -119,6 +119,19 @@ class Maze {
                 this.grid[cr][halfCols + 1] = 0;
             }
         }
+
+        // 4. Guarantee 4 outer corners are open corridors with 2-way openings
+        const outerCorners = [
+            { c: 1, r: 1, n1: { c: 2, r: 1 }, n2: { c: 1, r: 2 } },
+            { c: this.cols - 2, r: 1, n1: { c: this.cols - 3, r: 1 }, n2: { c: this.cols - 2, r: 2 } },
+            { c: 1, r: this.rows - 2, n1: { c: 2, r: this.rows - 2 }, n2: { c: 1, r: this.rows - 3 } },
+            { c: this.cols - 2, r: this.rows - 2, n1: { c: this.cols - 3, r: this.rows - 2 }, n2: { c: this.cols - 2, r: this.rows - 3 } }
+        ];
+        outerCorners.forEach(({ c, r, n1, n2 }) => {
+            this.grid[r][c] = 0;
+            this.grid[n1.r][n1.c] = 0;
+            this.grid[n2.r][n2.c] = 0;
+        });
     }
 
     createSanctuary() {
@@ -137,14 +150,14 @@ class Maze {
             }
         }
 
-        // 4 Doorways for tactical player escape:
-        // North Door (Ghost exit door beam): (cx, cy - 2)
-        this.grid[cy - 2][cx] = 3;
-        // South Door (Player entrance/exit): (cx, cy + 2)
+        // 4 Open Doorways for tactical player movement in all 4 cardinal directions:
+        // North Door: (cx, cy - 2)
+        this.grid[cy - 2][cx] = 0;
+        // South Door: (cx, cy + 2)
         this.grid[cy + 2][cx] = 0;
-        // West Door (Player entrance/exit): (cx - 3, cy)
+        // West Door: (cx - 3, cy)
         this.grid[cy][cx - 3] = 0;
-        // East Door (Player entrance/exit): (cx + 3, cy)
+        // East Door: (cx + 3, cy)
         this.grid[cy][cx + 3] = 0;
 
         // Ensure clear outer perimeter avenue around all 4 doors
@@ -283,18 +296,31 @@ class Maze {
     }
 
     getPlayerSpawn() {
+        // Player starts right at the center of the maze inside the Safe Sanctuary Zone
         const cx = Math.floor(this.cols / 2);
-        const cy = Math.floor(this.rows / 2) + 4;
-        if (this.inBounds(cx, cy) && this.grid[cy][cx] === 0) {
-            return { c: cx, r: cy };
-        }
-        const walk = this.getWalkableCells();
-        return walk[walk.length - 1] || { c: 1, r: 1 };
+        const cy = Math.floor(this.rows / 2);
+        return { c: cx, r: cy };
     }
 
     getGhostHouseSpawn() {
         const cx = Math.floor(this.cols / 2);
         const cy = Math.floor(this.rows / 2);
         return { c: cx, r: cy };
+    }
+
+    getCornerSpawn(id) {
+        // The 4 ghosts start from and regenerate at the 4 outer corners
+        switch (id) {
+            case 1: // Blinky (Red) - Top-Right
+                return { c: this.cols - 2, r: 1, dir: DIR.WEST };
+            case 2: // Pinky (Pink) - Top-Left
+                return { c: 1, r: 1, dir: DIR.EAST };
+            case 3: // Inky (Cyan) - Bottom-Right
+                return { c: this.cols - 2, r: this.rows - 2, dir: DIR.WEST };
+            case 4: // Clyde (Orange) - Bottom-Left
+                return { c: 1, r: this.rows - 2, dir: DIR.EAST };
+            default:
+                return { c: 1, r: 1, dir: DIR.EAST };
+        }
     }
 }
