@@ -87,6 +87,8 @@ async def custom_site():
     # your main.py has an infinite sync loop somewhere !
 
     try:
+        if hasattr(platform.window, "dismissGameLoader"):
+            platform.window.dismissGameLoader()
         loader_el = platform.window.document.getElementById("game_loader_overlay")
         if loader_el:
             loader_el.style.display = "none"
@@ -329,32 +331,121 @@ function show_infobox() {
     <div id="game_loader_overlay" class="notranslate" translate="no" style="position: absolute; top: 2px; left: 0; right: 0; margin: 0 auto; width: min(100vw, 52vh, 480px); height: min(100vw, 52vh, 480px); background: #0c1430; z-index: 25; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px; border: 2px solid #3b82f6; color: #fff; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 18px; box-sizing: border-box; box-shadow: 0 8px 32px rgba(0,0,0,0.8);">
         <div style="font-size: 26px; font-weight: 900; color: #60a5fa; margin-bottom: 4px; text-shadow: 0 0 10px rgba(96,165,250,0.5);">🎮 كابتن كيو (Captain-Q)</div>
         <div style="font-size: 14px; font-weight: bold; color: #ffd700; margin-bottom: 12px;">مبادرة الرياضيات - الصف السابع</div>
-        <div style="width: 44px; height: 44px; border: 4px solid rgba(255,215,0,0.15); border-top-color: #ffd700; border-radius: 50%; animation: spinLoader 0.9s linear infinite; margin-bottom: 14px;"></div>
-        <div id="loader_status_txt" style="font-size: 14px; color: #93c5fd; font-weight: bold;">جاري تحميل المتاهة وتجهيز الألعاب... ⏳</div>
-        <div style="width: 82%; max-width: 260px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 5px; overflow: hidden; margin-top: 10px; margin-bottom: 6px;">
-            <div id="loader_progress_bar" style="width: 25%; height: 100%; background: linear-gradient(90deg, #3b82f6, #ffd700); border-radius: 5px; transition: width 0.4s ease;"></div>
+        <div style="width: 42px; height: 42px; border: 4px solid rgba(255,215,0,0.15); border-top-color: #ffd700; border-radius: 50%; animation: spinLoader 0.9s linear infinite; margin-bottom: 12px;"></div>
+        <div id="loader_status_txt" style="font-size: 14px; color: #93c5fd; font-weight: bold; min-height: 22px;">جاري تحميل محرك اللعبة والملفات... ⏳</div>
+        <div style="width: 82%; max-width: 260px; height: 8px; background: rgba(255,255,255,0.15); border-radius: 5px; overflow: hidden; margin-top: 10px; margin-bottom: 8px;">
+            <div id="loader_progress_bar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #3b82f6, #ffd700); border-radius: 5px; transition: width 0.3s ease;"></div>
         </div>
-        <div style="font-size: 12px; color: #94a3b8; margin-top: 6px; line-height: 1.5;">تم تقليص حجم اللعبة إلى (1.9MB) لسرعة فائقة.<br>التحميل لأول مرة فقط، إذا طال تأكد من فتح الرابط بمتصفح <b>Chrome</b>.</div>
-        <button id="btn_retry_loader" onclick="window.location.reload()" style="display: none; margin-top: 10px; padding: 6px 14px; background: #e65100; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer;">إعادة المحاولة 🔄</button>
+        <div id="loader_sub_txt" style="font-size: 12px; color: #94a3b8; margin-top: 4px; line-height: 1.5; max-width: 90%;">تحميل ملفات اللعبة لأول مرة فقط (~13MB).<br>المرات القادمة ستفتح فوراً! يُرجى عدم مغادرة الصفحة.</div>
+        <button id="btn_retry_loader" onclick="window.location.reload()" style="display: none; margin-top: 10px; padding: 6px 16px; background: #e65100; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 10px rgba(230,81,0,0.4);">إعادة المحاولة 🔄</button>
     </div>
     <script>
         (function() {
-            let p = 25;
+            let p = 15;
             const bar = document.getElementById("loader_progress_bar");
             const retryBtn = document.getElementById("btn_retry_loader");
             const statusTxt = document.getElementById("loader_status_txt");
-            const timer = setInterval(() => {
-                if (p < 92) {
-                    p += Math.floor(Math.random() * 8) + 4;
-                    if (p > 92) p = 92;
-                    if (bar) bar.style.width = p + "%";
-                }
-            }, 600);
+            const subTxt = document.getElementById("loader_sub_txt");
+            const overlay = document.getElementById("game_loader_overlay");
+            const startTime = Date.now();
+            let overlayDismissed = false;
 
-            setTimeout(() => {
-                if (retryBtn) retryBtn.style.display = "inline-block";
-                if (statusTxt) statusTxt.innerText = "الاتصال بالإنترنت بطيء، يرجى الانتظار أو إعادة المحاولة ⚠️";
-            }, 35000);
+            function dismissLoader() {
+                if (overlayDismissed) return;
+                overlayDismissed = true;
+                if (bar) bar.style.width = "100%";
+                if (overlay) {
+                    overlay.style.transition = "opacity 0.35s ease";
+                    overlay.style.opacity = "0";
+                    setTimeout(() => {
+                        overlay.style.display = "none";
+                    }, 350);
+                }
+            }
+
+            // Expose dismiss function globally for Python or hooks
+            window.dismissGameLoader = dismissLoader;
+
+            const watcher = setInterval(() => {
+                if (overlayDismissed) {
+                    clearInterval(watcher);
+                    return;
+                }
+
+                const elapsed = (Date.now() - startTime) / 1000;
+
+                // 1. Check if Pygame Canvas is already initialized & rendered
+                const canvas = document.getElementById("canvas");
+                if (canvas && (canvas.width > 50 || canvas.height > 50 || window.hasLaunchedGame)) {
+                    dismissLoader();
+                    clearInterval(watcher);
+                    return;
+                }
+
+                // 2. Real download progress tracking from Pygbag if available
+                const rawProgress = document.getElementById("progress");
+                let realPct = 0;
+                if (rawProgress && rawProgress.max > 0 && rawProgress.value > 0) {
+                    realPct = Math.round((rawProgress.value / rawProgress.max) * 100);
+                }
+
+                // 3. Realistic pacing for WASM download + compilation on budget phones
+                if (elapsed < 15) {
+                    p = Math.max(p, Math.min(50, 15 + elapsed * 2.3));
+                } else if (elapsed < 40) {
+                    p = Math.max(p, Math.min(75, 50 + (elapsed - 15) * 1.0));
+                } else if (elapsed < 75) {
+                    p = Math.max(p, Math.min(90, 75 + (elapsed - 40) * 0.43));
+                } else if (elapsed < 110) {
+                    p = Math.max(p, Math.min(96, 90 + (elapsed - 75) * 0.17));
+                }
+
+                if (realPct > p && realPct <= 98) {
+                    p = realPct;
+                }
+
+                if (bar) bar.style.width = p + "%";
+
+                // 4. Graduated multi-stage guidance messages
+                if (elapsed < 25) {
+                    if (statusTxt && !statusTxt.dataset.custom) {
+                        statusTxt.innerHTML = "جاري تحميل محرك اللعبة والملفات... ⏳";
+                    }
+                    if (subTxt) {
+                        subTxt.innerHTML = "تحميل ملفات اللعبة لأول مرة فقط (~13MB).<br>المرات القادمة ستفتح فوراً! يُرجى عدم مغادرة الصفحة.";
+                    }
+                } else if (elapsed >= 25 && elapsed < 55) {
+                    if (statusTxt && !statusTxt.dataset.custom) {
+                        statusTxt.innerHTML = "جاري تجهيز وبرمجة محرك المتاهة... ⚙️";
+                    }
+                    if (subTxt) {
+                        subTxt.innerHTML = "💡 <b>نصيحة:</b> أغلق التطبيقات الأخرى بالخلفية لتسريع المعالجة.";
+                    }
+                } else if (elapsed >= 55 && elapsed < 85) {
+                    if (statusTxt && !statusTxt.dataset.custom) {
+                        statusTxt.innerHTML = "شارفنا على الانتهاء من تجهيز اللعبة... 🎮";
+                    }
+                    if (subTxt) {
+                        subTxt.innerHTML = "المتصفح يجهّز ملفات WebAssembly بالذاكرة، شكراً لصبرك! ⏳";
+                    }
+                } else if (elapsed >= 85 && elapsed < 115) {
+                    if (statusTxt && !statusTxt.dataset.custom) {
+                        statusTxt.innerHTML = "جاري الإقلاع النهائي للعبة كابتن كيو... 🚀";
+                    }
+                    if (subTxt) {
+                        subTxt.innerHTML = "إذا تأخر الهاتف بالتشغيل، يمكنك الضغط على زر إعادة المحاولة.";
+                    }
+                    if (retryBtn) retryBtn.style.display = "inline-block";
+                } else if (elapsed >= 115) {
+                    if (statusTxt) {
+                        statusTxt.innerHTML = "⚠️ استغرقت المعالجة وقتاً طويلاً";
+                    }
+                    if (subTxt) {
+                        subTxt.innerHTML = "<div style='background:rgba(239,68,68,0.18);padding:8px;border-radius:6px;border:1px solid #ef4444;margin-top:6px;font-size:11.5px;color:#fecaca;'>قد تكون ذاكرة الهاتف مشغولة بالتطبيقات:<br>1️⃣ أغلق كافة التطبيقات بالخلفية وأعد المحاولة 🔄<br>2️⃣ أو افتح الرابط من جهاز كمبيوتر / لابتوب 💻</div>";
+                    }
+                    if (retryBtn) retryBtn.style.display = "inline-block";
+                }
+            }, 350);
         })();
     </script>
     <style>
