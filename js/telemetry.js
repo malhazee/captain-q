@@ -203,20 +203,16 @@ class TelemetryTracker {
             const keepLimit = Math.max(10, perfectCount + 5);
             list = list.slice(0, keepLimit);
 
-            // Re-assign ranks: all 3000 scores share Rank 1 (🥇)
+            // Re-assign ranks: Dense ranking where top score tier is ALWAYS Rank 1 (🥇)
             let currentRank = 1;
             let prevScore = null;
-            list.forEach((item) => {
-                if (item.score >= 3000) {
-                    item.rank = 1;
-                } else {
-                    if (prevScore === null || prevScore >= 3000) {
-                        currentRank = 2;
-                    } else if (item.score < prevScore) {
-                        currentRank++;
-                    }
-                    item.rank = currentRank;
+            list.forEach((item, idx) => {
+                if (idx === 0) {
+                    currentRank = 1;
+                } else if (item.score < prevScore) {
+                    currentRank++;
                 }
+                item.rank = currentRank;
                 prevScore = item.score;
             });
             localStorage.setItem("captain_q_public_leaderboard", JSON.stringify(list));

@@ -230,17 +230,52 @@ class CaptainQGame {
                 return;
             }
 
+            // 1. Normalize scores & accuracy (handles Google Sheets "1" -> "100%", and 2900 level 6 -> 3000 full mark)
+            list.forEach(item => {
+                let accStr = String(item.accuracy || "100%").trim();
+                if (accStr === "1" || accStr === "1.0" || accStr === "100") {
+                    item.accuracy = "100%";
+                } else if (!accStr.endsWith("%") && !isNaN(parseFloat(accStr))) {
+                    const num = parseFloat(accStr);
+                    item.accuracy = (num <= 1 ? (num * 100).toFixed(1) : num.toFixed(1)) + "%";
+                }
+
+                // If completed level 6 with 100% accuracy and score >= 2900, credit full mark 3,000
+                if (item.score >= 2900 && item.level >= 6 && (item.accuracy === "100%" || item.accuracy === "100.0%")) {
+                    item.score = 3000;
+                }
+            });
+
+            // 2. Sort descending by score, then accuracy
+            list.sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                return (parseFloat(b.accuracy) || 0) - (parseFloat(a.accuracy) || 0);
+            });
+
+            // 3. Dense Ranking: Top score tier is ALWAYS Rank 1 (🥇), next score is Rank 2 (🥈), etc.
+            let currentRank = 1;
+            let prevScore = null;
+            list.forEach((item, idx) => {
+                if (idx === 0) {
+                    currentRank = 1;
+                } else if (item.score < prevScore) {
+                    currentRank++;
+                }
+                item.rank = currentRank;
+                prevScore = item.score;
+            });
+
             let html = "";
             list.forEach((item, index) => {
                 const score = item.score || 0;
-                // Solution 1: Every student who achieved 3,000 points is recognized as المركز الأول مكرر 🥇 with 👑 فارس الإتقان badge
-                const isGoldChampion = (score >= 3000) || (item.rank === 1 && (item.accuracy === "100%" || score >= 3000));
-                const rank = item.rank || (index + 1);
+                const rank = item.rank || 1;
+                // Solution 1: Every student who achieved full mark (3,000 pts or Rank 1) is a Gold Champion
+                const isGoldChampion = (score >= 3000) || (rank === 1);
                 let rankClass = "";
                 let medal = `#${rank}`;
                 let badgeHtml = "";
 
-                if (isGoldChampion) {
+                if (isGoldChampion || rank === 1) {
                     rankClass = "top-1 gold-champion";
                     medal = "🥇";
                     badgeHtml = `<span class="lb-star-badge">👑 فارس الإتقان</span>`;
