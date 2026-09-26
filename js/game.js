@@ -31,7 +31,6 @@ class CaptainQGame {
         this.inputHandler = null;
 
         // Visual timers
-        this.frightenedDuration = 0;
         this.lastTimestamp = 0;
 
         this.initDOM();
@@ -55,7 +54,7 @@ class CaptainQGame {
 
         // Section buttons
         this.selectedSection = "شعبة أ";
-        document.querySelectorAll(".sec-btn").forEach((btn, idx) => {
+        document.querySelectorAll(".sec-btn").forEach((btn) => {
             btn.addEventListener("click", () => {
                 document.querySelectorAll(".sec-btn").forEach(b => b.classList.remove("selected"));
                 btn.classList.add("selected");
@@ -99,35 +98,43 @@ class CaptainQGame {
         const seed = 41 + this.levelIndex;
         
         this.maze = new Maze(GAME_CONFIG.GRID_WIDTH, GAME_CONFIG.GRID_HEIGHT, seed);
-        const tileSize = this.canvas.width / this.maze.cols;
+        
+        // Exact frame geometry ensuring row 0 is never cut off
+        const HUD_HEIGHT = 64;
+        const availHeight = this.canvas.height - HUD_HEIGHT;
+        const tileSize = Math.floor(Math.min(this.canvas.width / this.maze.cols, availHeight / this.maze.rows));
         this.tileSize = tileSize;
+        this.mazeOffsetX = Math.floor((this.canvas.width - this.maze.cols * tileSize) / 2);
+        this.mazeOffsetY = Math.floor(HUD_HEIGHT + (availHeight - this.maze.rows * tileSize) / 2);
 
         // Player
         const pSpawn = this.maze.getPlayerSpawn();
         if (!this.player) {
-            this.player = new Player(pSpawn, tileSize);
+            this.player = new Player(pSpawn, tileSize, this.mazeOffsetX, this.mazeOffsetY);
         } else {
             this.player.tileSize = tileSize;
-            this.player.reset(pSpawn);
+            this.player.reset(pSpawn, this.mazeOffsetX, this.mazeOffsetY);
         }
         this.player.speed = levelConfig.playerSpeed || 3.2;
 
-        // Ghosts
+        // Ghosts: Spaced out across house & entrance so all 4 ghosts are visible and roam!
+        const cx = Math.floor(this.maze.cols / 2);
+        const cy = Math.floor(this.maze.rows / 2);
+
         const gColors = [
-            { id: 1, name: "بلينكي", color: "#ef4444", corner: { c: this.maze.cols - 2, r: 1 } },
-            { id: 2, name: "بينكي", color: "#f472b6", corner: { c: 1, r: 1 } },
-            { id: 3, name: "إنكي", color: "#06b6d4", corner: { c: this.maze.cols - 2, r: this.maze.rows - 2 } },
-            { id: 4, name: "كلايد", color: "#f97316", corner: { c: 1, r: this.maze.rows - 2 } }
+            { id: 1, name: "بلينكي", color: "#ef4444", corner: { c: this.maze.cols - 2, r: 1 }, spawn: { c: cx, r: cy - 3 }, state: "CHASE", exitDelay: 0 },
+            { id: 2, name: "بينكي", color: "#f472b6", corner: { c: 1, r: 1 }, spawn: { c: cx, r: cy }, state: "WAITING", exitDelay: 45 },
+            { id: 3, name: "إنكي", color: "#06b6d4", corner: { c: this.maze.cols - 2, r: this.maze.rows - 2 }, spawn: { c: cx - 1, r: cy }, state: "WAITING", exitDelay: 150 },
+            { id: 4, name: "كلايد", color: "#f97316", corner: { c: 1, r: this.maze.rows - 2 }, spawn: { c: cx + 1, r: cy }, state: "WAITING", exitDelay: 270 }
         ];
 
         this.ghosts = [];
-        const count = Math.min(levelConfig.ghostCount || 3, 4);
-        const gHouse = this.maze.getGhostHouseSpawn();
+        const count = 4; // Always spawn all 4 ghosts (Blinky, Pinky, Inky, Clyde)
 
         for (let i = 0; i < count; i++) {
             const gInfo = gColors[i];
-            const g = new Ghost(gInfo.id, gInfo.name, gInfo.color, gInfo.corner, tileSize);
-            g.reset(gHouse);
+            const g = new Ghost(gInfo.id, gInfo.name, gInfo.color, gInfo.corner, tileSize, this.mazeOffsetX, this.mazeOffsetY);
+            g.reset(gInfo.spawn, gInfo.state, gInfo.exitDelay, this.mazeOffsetX, this.mazeOffsetY);
             g.speed = levelConfig.ghostSpeed || 2.2;
             this.ghosts.push(g);
         }
@@ -203,7 +210,10 @@ class CaptainQGame {
         }
 
         // Update ghosts & collisions
-        const gHouse = this.maze.getGhostHouseSpawn();
+        const cx = Math.floor(this.maze.cols / 2);
+        const cy = Math.floor(this.maze.rows / 2);
+        const gHouse = { c: cx, r: cy };
+
         for (let ghost of this.ghosts) {
             ghost.update(this.maze, this.player, gHouse);
 
@@ -243,9 +253,21 @@ class CaptainQGame {
         } else {
             // Respawn player and ghosts
             const pSpawn = this.maze.getPlayerSpawn();
-            this.player.reset(pSpawn);
-            const gHouse = this.maze.getGhostHouseSpawn();
-            this.ghosts.forEach(g => g.reset(gHouse));
+            this.player.reset(pSpawn, this.mazeOffsetX, this.mazeOffsetY);
+
+            const cx = Math.floor(this.maze.cols / 2);
+            const cy = Math.floor(this.maze.rows / 2);
+            const gSpawns = [
+                { spawn: { c: cx, r: cy - 3 }, state: "CHASE", exitDelay: 0 },
+                { spawn: { c: cx, r: cy }, state: "WAITING", exitDelay: 45 },
+                { spawn: { c: cx - 1, r: cy }, state: "WAITING", exitDelay: 150 },
+                { spawn: { c: cx + 1, r: cy }, state: "WAITING", exitDelay: 270 }
+            ];
+
+            this.ghosts.forEach((g, idx) => {
+                const info = gSpawns[idx] || gSpawns[0];
+                g.reset(info.spawn, info.state, info.exitDelay, this.mazeOffsetX, this.mazeOffsetY);
+            });
             this.startLevelIntro();
         }
     }
@@ -253,7 +275,6 @@ class CaptainQGame {
     handleLevelClear() {
         audio.playVictory();
         if (this.levelIndex + 1 >= GAME_CONFIG.LEVELS.length) {
-            // VICTORY!
             this.state = "VICTORY";
             this.telemetry.sendFinalReport("فوز ساحق وتجاوز كافة المراحل 🏆");
         } else {
@@ -313,11 +334,10 @@ class CaptainQGame {
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 const cell = this.maze.grid[r][c];
-                const px = c * ts;
-                const py = r * ts;
+                const px = this.mazeOffsetX + c * ts;
+                const py = this.mazeOffsetY + r * ts;
 
                 if (cell === 1) {
-                    // Futuristic Neon Wall Block
                     ctx.fillStyle = "#0c1a3a";
                     ctx.fillRect(px, py, ts, ts);
 
@@ -325,12 +345,11 @@ class CaptainQGame {
                     ctx.lineWidth = 2;
                     ctx.strokeRect(px + 1, py + 1, ts - 2, ts - 2);
 
-                    // Inner neon core
                     ctx.fillStyle = "rgba(59, 130, 246, 0.15)";
                     ctx.fillRect(px + 4, py + 4, ts - 8, ts - 8);
                 } else if (cell === 3) {
                     // Ghost Door
-                    ctx.fillStyle = "rgba(244, 114, 182, 0.7)";
+                    ctx.fillStyle = "rgba(244, 114, 182, 0.85)";
                     ctx.fillRect(px, py + ts * 0.4, ts, ts * 0.2);
                 }
             }
@@ -343,8 +362,8 @@ class CaptainQGame {
         // Regular Dots
         ctx.fillStyle = "#ffd54f";
         this.missionMgr.dots.forEach(d => {
-            const px = (d.c + 0.5) * ts;
-            const py = (d.r + 0.5) * ts;
+            const px = this.mazeOffsetX + (d.c + 0.5) * ts;
+            const py = this.mazeOffsetY + (d.r + 0.5) * ts;
             ctx.beginPath();
             ctx.arc(px, py, ts * 0.12, 0, Math.PI * 2);
             ctx.fill();
@@ -353,8 +372,8 @@ class CaptainQGame {
         // Super Dots (Pulsing)
         const pulse = (Math.sin(Date.now() / 150) + 1) * 0.5;
         this.missionMgr.superDots.forEach(sd => {
-            const px = (sd.c + 0.5) * ts;
-            const py = (sd.r + 0.5) * ts;
+            const px = this.mazeOffsetX + (sd.c + 0.5) * ts;
+            const py = this.mazeOffsetY + (sd.r + 0.5) * ts;
             const r = ts * (0.28 + pulse * 0.08);
 
             ctx.beginPath();
@@ -368,15 +387,14 @@ class CaptainQGame {
 
         // Math Cards (Rectangular Badges with Numbers)
         this.missionMgr.mathTiles.forEach(mt => {
-            const px = (mt.c + 0.5) * ts;
-            const py = (mt.r + 0.5) * ts;
+            const px = this.mazeOffsetX + (mt.c + 0.5) * ts;
+            const py = this.mazeOffsetY + (mt.r + 0.5) * ts;
             const w = ts * 1.6;
             const h = ts * 0.85;
 
             ctx.save();
             ctx.translate(px, py);
 
-            // Card body
             ctx.beginPath();
             ctx.roundRect(-w / 2, -h / 2, w, h, 6);
             ctx.fillStyle = mt.isTarget ? "#1e3a5f" : "#2d1b36";
@@ -386,12 +404,12 @@ class CaptainQGame {
             ctx.lineWidth = 1.8;
             ctx.stroke();
 
-            // Label text
+            // Label text: prepend \u200E so negative numbers like -0.5 are LTR and not reversed
             ctx.fillStyle = "#ffffff";
-            ctx.font = `bold ${Math.round(ts * 0.45)}px system-ui, sans-serif`;
+            ctx.font = `bold ${Math.round(ts * 0.44)}px system-ui, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(mt.label, 0, 1);
+            ctx.fillText("\u200E" + mt.label, 0, 1);
 
             ctx.restore();
         });
@@ -414,35 +432,36 @@ class CaptainQGame {
 
     renderHUD(ctx) {
         const curLvl = GAME_CONFIG.LEVELS[this.levelIndex % GAME_CONFIG.LEVELS.length];
-        
-        // Top Banner
-        ctx.fillStyle = "rgba(12, 20, 48, 0.92)";
-        ctx.fillRect(0, 0, this.canvas.width, 54);
+        const hudH = 64;
 
-        // Mission Prompt & Progress
+        // Top Banner
+        ctx.fillStyle = "rgba(12, 20, 48, 0.95)";
+        ctx.fillRect(0, 0, this.canvas.width, hudH);
+
+        // Mission Prompt & Progress (Right side)
         ctx.fillStyle = "#ffd700";
-        ctx.font = "bold 18px system-ui, sans-serif";
+        ctx.font = "bold 19px system-ui, sans-serif";
         ctx.textAlign = "right";
-        ctx.fillText(`🎯 ${curLvl.prompt}`, this.canvas.width - 18, 24);
+        ctx.fillText(`🎯 ${curLvl.prompt}`, this.canvas.width - 18, 26);
 
         ctx.fillStyle = "#93c5fd";
         ctx.font = "14px system-ui, sans-serif";
-        ctx.fillText(`المرحلة ${this.levelIndex + 1}: ${curLvl.title}  |  المطلوب: ${this.missionMgr.collectedCount}/${this.missionMgr.neededCount}`, this.canvas.width - 18, 44);
+        ctx.fillText(`المرحلة ${this.levelIndex + 1}: ${curLvl.title}  |  المطلوب: ${this.missionMgr.collectedCount}/${this.missionMgr.neededCount}`, this.canvas.width - 18, 48);
 
-        // Score & Lives & Time Left
+        // Score & Lives (Left side)
         ctx.textAlign = "left";
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 18px system-ui, sans-serif";
-        ctx.fillText(`النقاط: ${this.score}`, 18, 24);
+        ctx.fillText(`النقاط: ${this.score}`, 18, 25);
 
         let hearts = "";
         for (let i = 0; i < this.lives; i++) hearts += "❤️ ";
-        ctx.font = "16px system-ui, sans-serif";
-        ctx.fillText(hearts || "💀", 18, 44);
+        ctx.font = "15px system-ui, sans-serif";
+        ctx.fillText(hearts || "💀", 18, 48);
 
         // Center Time Bar
         const timeRatio = Math.max(0, this.levelTimer / GAME_CONFIG.LEVEL_TIME_LIMIT);
-        const barWidth = 140;
+        const barWidth = 130;
         const barX = (this.canvas.width - barWidth) / 2;
         ctx.fillStyle = "rgba(255,255,255,0.2)";
         ctx.fillRect(barX, 16, barWidth, 8);
@@ -452,7 +471,7 @@ class CaptainQGame {
         ctx.fillStyle = "#cbd5e1";
         ctx.font = "bold 13px system-ui, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(`⏳ ${Math.ceil(this.levelTimer)}ث`, this.canvas.width / 2, 40);
+        ctx.fillText(`⏳ ${Math.ceil(this.levelTimer)}ث`, this.canvas.width / 2, 42);
     }
 
     renderIntroOverlay(ctx) {
@@ -555,7 +574,6 @@ class CaptainQGame {
         ctx.font = "bold 22px system-ui, sans-serif";
         ctx.fillText("انقر على الشاشة للبدء من جديد 🔄", cx, cy + 120);
 
-        // Click to restart
         this.canvas.onclick = () => {
             this.canvas.onclick = null;
             this.restartGame();
