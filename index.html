@@ -218,6 +218,9 @@ function show_infobox() {
 
     <title>كابتن كيو - مغامرة الأعداد النسبية | مبادرة جائزة الملكة رانيا</title>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="google" content="notranslate">
     <meta name="robots" content="notranslate">
     <meta name="googlebot" content="notranslate">
@@ -307,12 +310,11 @@ function show_infobox() {
     </style>
 
     <script>
-/*
-        if (navigator.serviceWorker)
-            navigator.serviceWorker.register("https://pygame-web.github.io/cdn/0.9.3/pygbag0.9.3.js")
-        else
-            console.warn("Service workers not supported")
-*/
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                for (let r of regs) r.unregister();
+            }).catch(() => {});
+        }
     </script>
 
 </head>
@@ -337,18 +339,49 @@ function show_infobox() {
             <div id="loader_progress_bar" style="width: 15%; height: 100%; background: linear-gradient(90deg, #3b82f6, #ffd700); border-radius: 5px; transition: width 0.3s ease;"></div>
         </div>
         <div id="loader_sub_txt" style="font-size: 12px; color: #94a3b8; margin-top: 4px; line-height: 1.5; max-width: 90%;">تحميل ملفات اللعبة لأول مرة فقط (~13MB).<br>المرات القادمة ستفتح فوراً! يُرجى عدم مغادرة الصفحة.</div>
-        <button id="btn_retry_loader" onclick="window.location.reload()" style="display: none; margin-top: 10px; padding: 6px 16px; background: #e65100; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 10px rgba(230,81,0,0.4);">إعادة المحاولة 🔄</button>
+        <div style="display: flex; gap: 8px; justify-content: center; margin-top: 10px; flex-wrap: wrap;">
+            <button id="btn_retry_loader" onclick="window.location.reload()" style="display: none; padding: 6px 14px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 10px rgba(37,99,235,0.4);">إعادة المحاولة 🔄</button>
+            <button id="btn_clear_cache" onclick="window.clearGameCacheAndReload()" style="display: none; padding: 6px 14px; background: #e65100; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 3px 10px rgba(230,81,0,0.4);">مسح الكاش والتحديث 🧹</button>
+        </div>
     </div>
     <script>
         (function() {
             let p = 15;
             const bar = document.getElementById("loader_progress_bar");
             const retryBtn = document.getElementById("btn_retry_loader");
+            const clearCacheBtn = document.getElementById("btn_clear_cache");
             const statusTxt = document.getElementById("loader_status_txt");
             const subTxt = document.getElementById("loader_sub_txt");
             const overlay = document.getElementById("game_loader_overlay");
             const startTime = Date.now();
             let overlayDismissed = false;
+
+            window.clearGameCacheAndReload = async function() {
+                if (clearCacheBtn) clearCacheBtn.innerText = "جاري مسح الذاكرة... ⏳";
+                try {
+                    if ('serviceWorker' in navigator) {
+                        const regs = await navigator.serviceWorker.getRegistrations();
+                        for (const r of regs) await r.unregister();
+                    }
+                    if ('caches' in window) {
+                        const keys = await caches.keys();
+                        for (const k of keys) await caches.delete(k);
+                    }
+                    if (window.indexedDB) {
+                        const dbs = await (indexedDB.databases ? indexedDB.databases() : Promise.resolve([]));
+                        for (const db of dbs) {
+                            if (db.name) indexedDB.deleteDatabase(db.name);
+                        }
+                    }
+                    localStorage.clear();
+                    sessionStorage.clear();
+                } catch (e) {
+                    console.warn("Cache reset error:", e);
+                }
+                const url = new URL(window.location.href);
+                url.searchParams.set('_cb', Date.now());
+                window.location.replace(url.toString());
+            };
 
             function dismissLoader() {
                 if (overlayDismissed) return;
@@ -433,17 +466,19 @@ function show_infobox() {
                         statusTxt.innerHTML = "جاري الإقلاع النهائي للعبة كابتن كيو... 🚀";
                     }
                     if (subTxt) {
-                        subTxt.innerHTML = "إذا تأخر الهاتف بالتشغيل، يمكنك الضغط على زر إعادة المحاولة.";
+                        subTxt.innerHTML = "إذا تأخر الهاتف بالتشغيل، يمكنك الضغط على زر إعادة المحاولة أو مسح الكاش.";
                     }
                     if (retryBtn) retryBtn.style.display = "inline-block";
+                    if (clearCacheBtn) clearCacheBtn.style.display = "inline-block";
                 } else if (elapsed >= 115) {
                     if (statusTxt) {
                         statusTxt.innerHTML = "⚠️ استغرقت المعالجة وقتاً طويلاً";
                     }
                     if (subTxt) {
-                        subTxt.innerHTML = "<div style='background:rgba(239,68,68,0.18);padding:8px;border-radius:6px;border:1px solid #ef4444;margin-top:6px;font-size:11.5px;color:#fecaca;'>قد تكون ذاكرة الهاتف مشغولة بالتطبيقات:<br>1️⃣ أغلق كافة التطبيقات بالخلفية وأعد المحاولة 🔄<br>2️⃣ أو افتح الرابط من جهاز كمبيوتر / لابتوب 💻</div>";
+                        subTxt.innerHTML = "<div style='background:rgba(239,68,68,0.18);padding:8px;border-radius:6px;border:1px solid #ef4444;margin-top:6px;font-size:11.5px;color:#fecaca;'>قد تكون ذاكرة الهاتف مشغولة بالتطبيقات أو الكاش معلّق:<br>1️⃣ اضغط على زر <b>مسح الكاش والتحديث 🧹</b><br>2️⃣ أو أغلق كافة التطبيقات بالخلفية وأعد المحاولة 🔄<br>3️⃣ أو افتح الرابط من جهاز كمبيوتر / لابتوب 💻</div>";
                     }
                     if (retryBtn) retryBtn.style.display = "inline-block";
+                    if (clearCacheBtn) clearCacheBtn.style.display = "inline-block";
                 }
             }, 350);
         })();
