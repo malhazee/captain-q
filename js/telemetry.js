@@ -20,6 +20,15 @@ class TelemetryTracker {
         this.studentSection = section || "شعبة أ";
     }
 
+    resetSession() {
+        this.startTime = Date.now();
+        this.events = [];
+        this.score = 0;
+        this.level = 1;
+        this.lives = GAME_CONFIG.INITIAL_LIVES;
+        this.lastReportSent = false;
+    }
+
     recordAnswer(label, isTarget, misconception = "") {
         this.events.push({
             label: label,
@@ -93,17 +102,23 @@ class TelemetryTracker {
         const payload = {
             student_name: this.studentName,
             student_section: this.studentSection,
+            section: this.studentSection,
             level_reached: this.level,
+            levels_cleared: this.level,
             score: this.score,
+            final_score: this.score,
             lives_remaining: this.lives,
             correct_count: this.getCorrectCount(),
             wrong_count: this.getWrongCount(),
             accuracy_rate: this.getAccuracyRate(),
+            accuracy_percentage: parseFloat(this.getAccuracyRate()),
             time_spent_seconds: timeSpent,
             misconceptions: miscs.length > 0 ? miscs : ["أتقن الطالب كافة معايير الأعداد النسبية بنجاح 🌟"],
             questions_detail: `${status} - مجموع البطاقات: ${this.events.length}`,
+            date: new Date().toLocaleString("ar-JO"),
             timestamp: new Date().toISOString()
         };
+        this.lastReportSent = true;
         this.sendPayload(payload);
     }
 }

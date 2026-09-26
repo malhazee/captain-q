@@ -115,6 +115,53 @@ class CaptainQGame {
                 document.getElementById("mobile_reg_modal").style.display = "flex";
             });
         }
+
+        // Canvas Click & Touch interaction for Intro Skip & Results Return
+        this.canvas.addEventListener("click", (e) => this.handleCanvasInteraction(e));
+        this.canvas.addEventListener("touchend", (e) => {
+            e.preventDefault();
+            this.handleCanvasInteraction(e);
+        });
+
+        // Keyboard Space/Enter to Skip Intro or Return to Menu
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "Space" || e.code === "Enter") {
+                this.handleCanvasInteraction(e);
+            }
+        });
+    }
+
+    handleCanvasInteraction(e) {
+        if (this.state === "INTRO") {
+            this.skipIntro();
+        } else if (this.state === "GAME_OVER" || this.state === "VICTORY") {
+            this.returnToMainMenu();
+        }
+    }
+
+    skipIntro() {
+        if (this.state === "INTRO") {
+            this.introTimer = 0;
+            this.state = "PLAYING";
+            audio.playLevelStart();
+        }
+    }
+
+    returnToMainMenu() {
+        this.state = "REGISTRATION";
+        this.score = 0;
+        this.lives = GAME_CONFIG.INITIAL_LIVES;
+        this.levelIndex = 0;
+        this.levelTimer = GAME_CONFIG.LEVEL_TIME_LIMIT;
+        this.introTimer = GAME_CONFIG.INTRO_COUNTDOWN;
+        if (this.telemetry) {
+            this.telemetry.resetSession();
+        }
+        this.setupLevel(0);
+        const modal = document.getElementById("mobile_reg_modal");
+        if (modal) {
+            modal.style.display = "flex";
+        }
     }
 
     submitRegistration() {
@@ -245,10 +292,11 @@ class CaptainQGame {
 
         if (this.state !== "PLAYING") return;
 
-        // Level Timer
+        // Level Timer: when time runs out, end game directly and show results!
         this.levelTimer -= dt;
         if (this.levelTimer <= 0) {
-            this.handlePlayerDeath("نفاد وقت المرحلة");
+            this.levelTimer = 0;
+            this.handleTimeOut();
             return;
         }
 
@@ -305,11 +353,10 @@ class CaptainQGame {
             if (dist < (this.player.radius + ghost.radius) * 0.75) {
                 // If ghost is frightened OR player has active Shield Mode!
                 if (ghost.state === "FRIGHTENED" || this.player.isShieldActive()) {
-                    // Eat ghost!
+                    // Eat ghost: 0 points (points only on correct math answers)
                     ghost.state = "EATEN";
-                    this.score += 200;
                     audio.playGhostEaten();
-                    this.missionMgr.addFloatingText(ghost.pixelX, ghost.pixelY, "+200 🛡️👻", "#38bdf8");
+                    this.missionMgr.addFloatingText(ghost.pixelX, ghost.pixelY, "🛡️👻 تم أكل الشبح!", "#38bdf8");
                 } else if (ghost.state === "CHASE" || ghost.state === "SCATTER") {
                     this.handlePlayerDeath(`اصطدام بالشبح ${ghost.name}`);
                     return;
@@ -326,6 +373,18 @@ class CaptainQGame {
         this.telemetry.lives = this.lives;
     }
 
+    handleTimeOut() {
+        audio.playGameOver();
+        this.state = "GAME_OVER";
+        this.gameOverReason = "نفاد وقت المرحلة";
+        if (this.telemetry) {
+            this.telemetry.score = this.score;
+            this.telemetry.level = this.levelIndex + 1;
+            this.telemetry.lives = this.lives;
+            this.telemetry.sendFinalReport("نفاد وقت المرحلة ⏳");
+        }
+    }
+
     handlePlayerDeath(reason) {
         audio.playGameOver();
         this.lives--;
@@ -333,6 +392,7 @@ class CaptainQGame {
 
         if (this.lives <= 0) {
             this.state = "GAME_OVER";
+            this.gameOverReason = `انتهاء الأرواح (${reason})`;
             this.telemetry.sendFinalReport(`انتهت المحاولات (${reason})`);
         } else {
             // Respawn player in center and ghosts at their 4 corners
@@ -352,6 +412,7 @@ class CaptainQGame {
         audio.playVictory();
         if (this.levelIndex + 1 >= GAME_CONFIG.LEVELS.length) {
             this.state = "VICTORY";
+            this.gameOverReason = "فوز وتفوق تام 🏆";
             this.telemetry.sendFinalReport("فوز ساحق وتجاوز كافة المراحل 🏆");
         } else {
             this.state = "LEVEL_CLEAR";
@@ -508,12 +569,12 @@ class CaptainQGame {
             ctx.translate(px, py);
 
             ctx.beginPath();
-            ctx.roundRect(-w / 2, -h / 2, w, h, 5);
-            ctx.fillStyle = mt.isTarget ? "#0d2644" : "#281232";
+            ctx.roundRect(-w / 2, -h / 2, w, h, 6);
+            ctx.fillStyle = "#0c2144";
             ctx.fill();
 
-            ctx.strokeStyle = mt.isTarget ? "#38bdf8" : "#f472b6";
-            ctx.lineWidth = 1.6;
+            ctx.strokeStyle = "#38bdf8";
+            ctx.lineWidth = 1.8;
             ctx.stroke();
 
             // Label text: prepend \u200E so negative numbers like -0.5 are LTR and not reversed
@@ -598,47 +659,158 @@ class CaptainQGame {
     renderIntroOverlay(ctx) {
         const curLvl = GAME_CONFIG.LEVELS[this.levelIndex % GAME_CONFIG.LEVELS.length];
         
-        ctx.fillStyle = "rgba(7, 13, 30, 0.88)";
+        ctx.fillStyle = "rgba(7, 13, 30, 0.92)";
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        const cardW = 540;
-        const cardH = 340;
+        const cardW = 760;
+        const cardH = 580;
         const cx = (this.canvas.width - cardW) / 2;
         const cy = (this.canvas.height - cardH) / 2;
 
-        ctx.fillStyle = "#0c1430";
-        ctx.strokeStyle = "#3b82f6";
+        // Card Container
+        ctx.save();
+        ctx.fillStyle = "#0c1736";
+        ctx.strokeStyle = "#38bdf8";
         ctx.lineWidth = 3;
+        ctx.shadowColor = "rgba(56, 189, 248, 0.35)";
+        ctx.shadowBlur = 18;
         ctx.beginPath();
-        ctx.roundRect(cx, cy, cardW, cardH, 16);
+        ctx.roundRect(cx, cy, cardW, cardH, 20);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // Level Header
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "bold 18px system-ui, sans-serif";
+        ctx.fillText(`المرحلة ${this.levelIndex + 1} من ${GAME_CONFIG.LEVELS.length}`, this.canvas.width / 2, cy + 42);
+
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = "bold 30px system-ui, sans-serif";
+        ctx.fillText(curLvl.title, this.canvas.width / 2, cy + 82);
+
+        // Mission Prompt Box
+        const promptBoxW = cardW - 60;
+        const promptBoxX = cx + 30;
+        const promptBoxY = cy + 105;
+        ctx.fillStyle = "rgba(30, 58, 138, 0.4)";
+        ctx.strokeStyle = "#2563eb";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(promptBoxX, promptBoxY, promptBoxW, 52, 10);
         ctx.fill();
         ctx.stroke();
 
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#60a5fa";
-        ctx.font = "bold 26px system-ui, sans-serif";
-        ctx.fillText(`المرحلة ${this.levelIndex + 1}: ${curLvl.title}`, this.canvas.width / 2, cy + 60);
-
-        ctx.fillStyle = "#ffd700";
+        ctx.fillStyle = "#fef08a";
         ctx.font = "bold 20px system-ui, sans-serif";
-        ctx.fillText(curLvl.prompt, this.canvas.width / 2, cy + 115);
+        ctx.fillText(`🎯 المطلوب: ${curLvl.prompt}`, this.canvas.width / 2, promptBoxY + 33);
 
-        ctx.fillStyle = "#cbd5e1";
-        ctx.font = "16px system-ui, sans-serif";
-        ctx.fillText(`التقط ${this.missionMgr.neededCount} أعداد صحيحة وتجنب التمويهات الرياضية!`, this.canvas.width / 2, cy + 160);
+        // Target Section
+        ctx.fillStyle = "#34d399";
+        ctx.font = "bold 17px system-ui, sans-serif";
+        ctx.fillText("✅ الإجابات الصحيحة المستهدفة (+100 نقطة لكل منها):", this.canvas.width / 2, cy + 190);
 
-        // Countdown Circle
+        // Render Targets chips
+        const targets = curLvl.targets || [];
+        const chipW = 88;
+        const chipH = 38;
+        const chipGap = 12;
+        const totalTargetsW = targets.length * chipW + (targets.length - 1) * chipGap;
+        let startTargetX = (this.canvas.width - totalTargetsW) / 2;
+        const targetY = cy + 206;
+
+        targets.forEach(t => {
+            ctx.fillStyle = "#064e3b";
+            ctx.strokeStyle = "#10b981";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(startTargetX, targetY, chipW, chipH, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 18px system-ui, sans-serif";
+            ctx.textBaseline = "middle";
+            ctx.fillText("\u200E" + t, startTargetX + chipW / 2, targetY + chipH / 2 + 1);
+            ctx.textBaseline = "alphabetic";
+
+            startTargetX += chipW + chipGap;
+        });
+
+        // Traps Section
+        ctx.fillStyle = "#f87171";
+        ctx.font = "bold 17px system-ui, sans-serif";
+        ctx.fillText("❌ الإجابات الخاطئة / التمويهات (تجنبها - 0 نقطة):", this.canvas.width / 2, cy + 280);
+
+        const traps = curLvl.traps || [];
+        const totalTrapsW = traps.length * chipW + (traps.length - 1) * chipGap;
+        let startTrapX = (this.canvas.width - totalTrapsW) / 2;
+        const trapY = cy + 296;
+
+        traps.forEach(t => {
+            ctx.fillStyle = "#450a0a";
+            ctx.strokeStyle = "#ef4444";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(startTrapX, trapY, chipW, chipH, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 18px system-ui, sans-serif";
+            ctx.textBaseline = "middle";
+            ctx.fillText("\u200E" + t, startTrapX + chipW / 2, trapY + chipH / 2 + 1);
+            ctx.textBaseline = "alphabetic";
+
+            startTrapX += chipW + chipGap;
+        });
+
+        // Note about uniform card styling
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "14px system-ui, sans-serif";
+        ctx.fillText("ℹ️ تنبيه: جميع البطاقات داخل المتاهة متطابقة في اللون لتختبر مهارتك الذهنية!", this.canvas.width / 2, cy + 368);
+
+        // Countdown & Skip CTA
         const count = Math.ceil(this.introTimer);
+        const timerY = cy + 428;
+
+        // Circular Timer Indicator
         ctx.beginPath();
-        ctx.arc(this.canvas.width / 2, cy + 240, 36, 0, Math.PI * 2);
-        ctx.fillStyle = "#2563eb";
+        ctx.arc(this.canvas.width / 2, timerY, 32, 0, Math.PI * 2);
+        ctx.fillStyle = "#1e3a8a";
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 3;
         ctx.fill();
+        ctx.stroke();
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 32px system-ui, sans-serif";
+        ctx.font = "bold 26px system-ui, sans-serif";
         ctx.textBaseline = "middle";
-        ctx.fillText(count.toString(), this.canvas.width / 2, cy + 242);
+        ctx.fillText(count.toString(), this.canvas.width / 2, timerY + 1);
         ctx.textBaseline = "alphabetic";
+
+        // Skip Button Prompt
+        const btnW = 440;
+        const btnH = 46;
+        const btnX = (this.canvas.width - btnW) / 2;
+        const btnY = cy + 482;
+
+        ctx.fillStyle = "#1d4ed8";
+        ctx.strokeStyle = "#60a5fa";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(btnX, btnY, btnW, btnH, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 17px system-ui, sans-serif";
+        ctx.fillText("⚡ انقر على الشاشة أو اضغط [مسافة] للبدء فوراً", this.canvas.width / 2, btnY + 29);
+
+        ctx.fillStyle = "#64748b";
+        ctx.font = "13px system-ui, sans-serif";
+        ctx.fillText("وقت القراءة: 10 ثوانٍ  •  زر الدرع الخارق متاح بالأسفل 🛡️", this.canvas.width / 2, cy + 555);
     }
 
     renderPausedOverlay(ctx) {
@@ -665,70 +837,159 @@ class CaptainQGame {
         ctx.fillText("جاري الانتقال للمرحلة التالية... ⏳", this.canvas.width / 2, this.canvas.height / 2 + 35);
     }
 
-    renderGameOverOverlay(ctx) {
+    renderResultsOverlay(ctx, isVictory, reason) {
         ctx.fillStyle = "rgba(7, 13, 30, 0.94)";
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        const cx = this.canvas.width / 2;
-        const cy = this.canvas.height / 2;
+        const cardW = 760;
+        const cardH = 640;
+        const cx = (this.canvas.width - cardW) / 2;
+        const cy = (this.canvas.height - cardH) / 2;
+
+        // Card Container
+        const borderColor = isVictory ? "#10b981" : (reason === "نفاد وقت المرحلة" ? "#f59e0b" : "#ef4444");
+        ctx.save();
+        ctx.fillStyle = "#0c1533";
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = borderColor;
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, cardW, cardH, 20);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
 
         ctx.textAlign = "center";
-        ctx.fillStyle = "#ef4444";
-        ctx.font = "bold 42px system-ui, sans-serif";
-        ctx.fillText("💀 انتهت المحاولة!", cx, cy - 100);
 
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "22px system-ui, sans-serif";
-        ctx.fillText(`النقاط النهائية: ${this.score}`, cx, cy - 40);
-        ctx.fillText(`نسبة الدقة الرياضية: ${this.telemetry.getAccuracyRate()}`, cx, cy);
+        // Title Header
+        let titleText = isVictory ? "🏆 مبروك يا بطل الرياضيات!" : (reason === "نفاد وقت المرحلة" ? "⏳ انتهى الوقت المحدد!" : "💀 انتهت المحاولة!");
+        let titleColor = isVictory ? "#ffd700" : (reason === "نفاد وقت المرحلة" ? "#fbbf24" : "#f87171");
+        ctx.fillStyle = titleColor;
+        ctx.font = "bold 34px system-ui, sans-serif";
+        ctx.fillText(titleText, this.canvas.width / 2, cy + 50);
 
-        // Misconceptions summary
+        // Student Info
+        ctx.fillStyle = "#93c5fd";
+        ctx.font = "bold 20px system-ui, sans-serif";
+        ctx.fillText(`👤 الطالب: ${this.telemetry.studentName}   |   ${this.telemetry.studentSection}`, this.canvas.width / 2, cy + 90);
+
+        // 4 Diagnostic Metric Cards (2x2 grid)
+        const metrics = [
+            { label: "مجموع النقاط (إجابات صحيحة)", val: `${this.score} نقطة`, col: "#38bdf8" },
+            { label: "نسبة الدقة الرياضية", val: `${this.telemetry.getAccuracyRate()}`, col: "#34d399" },
+            { label: "الإجابات الصحيحة الملتقطة", val: `+${this.telemetry.getCorrectCount()} صحيحة`, col: "#4ade80" },
+            { label: "التمويهات الخاطئة (0 نقطة)", val: `${this.telemetry.getWrongCount()} أخطاء`, col: "#f87171" }
+        ];
+
+        const mBoxW = 320;
+        const mBoxH = 68;
+        const gapX = 30;
+        const startX = cx + (cardW - (mBoxW * 2 + gapX)) / 2;
+        const startY = cy + 120;
+
+        metrics.forEach((m, idx) => {
+            const col = idx % 2;
+            const row = Math.floor(idx / 2);
+            const bx = startX + col * (mBoxW + gapX);
+            const by = startY + row * (mBoxH + 16);
+
+            ctx.fillStyle = "#070e24";
+            ctx.strokeStyle = "#1e3a8a";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(bx, by, mBoxW, mBoxH, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "14px system-ui, sans-serif";
+            ctx.fillText(m.label, bx + mBoxW / 2, by + 24);
+
+            ctx.fillStyle = m.col;
+            ctx.font = "bold 24px system-ui, sans-serif";
+            ctx.fillText(m.val, bx + mBoxW / 2, by + 54);
+        });
+
+        // Misconceptions Analysis
         const miscs = this.telemetry.getMisconceptions();
+        const miscBoxY = cy + 295;
+        const miscBoxW = cardW - 70;
+        const miscBoxX = cx + 35;
+
+        ctx.fillStyle = "rgba(15, 23, 42, 0.7)";
+        ctx.strokeStyle = miscs.length > 0 ? "#7f1d1d" : "#065f46";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(miscBoxX, miscBoxY, miscBoxW, 76, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = "center";
         if (miscs.length > 0) {
-            ctx.fillStyle = "#f87171";
-            ctx.font = "16px system-ui, sans-serif";
-            ctx.fillText(`⚠️ مواضيع للمراجعة: ${miscs[0]}`, cx, cy + 45);
+            ctx.fillStyle = "#fca5a5";
+            ctx.font = "bold 15px system-ui, sans-serif";
+            ctx.fillText("⚠️ مواضيع ومفاهيم بحاجة للمراجعة والتدريب:", this.canvas.width / 2, miscBoxY + 28);
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "14px system-ui, sans-serif";
+            const line = miscs.slice(0, 2).join("  •  ");
+            ctx.fillText(line, this.canvas.width / 2, miscBoxY + 54);
+        } else {
+            ctx.fillStyle = "#86efac";
+            ctx.font = "bold 16px system-ui, sans-serif";
+            ctx.fillText("🌟 أداء ممتاز ومفاهيم رياضية متقنة بنسبة 100%!", this.canvas.width / 2, miscBoxY + 34);
+            ctx.fillStyle = "#cbd5e1";
+            ctx.font = "14px system-ui, sans-serif";
+            ctx.fillText("لم تسجل أي خطأ في التمويهات الرياضية 👏", this.canvas.width / 2, miscBoxY + 58);
         }
 
-        // Restart Prompt
-        ctx.fillStyle = "#ffd700";
-        ctx.font = "bold 22px system-ui, sans-serif";
-        ctx.fillText("انقر على الشاشة للبدء من جديد 🔄", cx, cy + 120);
+        // Google Sheets Confirmation Banner
+        const bannerY = cy + 395;
+        const bannerW = cardW - 70;
+        const bannerX = cx + 35;
 
-        this.canvas.onclick = () => {
-            this.canvas.onclick = null;
-            this.restartGame();
-        };
+        ctx.fillStyle = "#064e3b";
+        ctx.strokeStyle = "#10b981";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(bannerX, bannerY, bannerW, 56, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#ecfdf5";
+        ctx.font = "bold 16px system-ui, sans-serif";
+        ctx.fillText("☁️ تم توثيق النتيجة وإرسالها إلى سجل المعلم (Google Sheets) بنجاح ✅", this.canvas.width / 2, bannerY + 34);
+
+        // Big Action Button: Return to Main Menu
+        const actBtnW = 480;
+        const actBtnH = 56;
+        const actBtnX = (this.canvas.width - actBtnW) / 2;
+        const actBtnY = cy + 480;
+
+        ctx.fillStyle = "#1d4ed8";
+        ctx.strokeStyle = "#60a5fa";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.roundRect(actBtnX, actBtnY, actBtnW, actBtnH, 14);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 20px system-ui, sans-serif";
+        ctx.fillText("🔄 العودة للقائمة الرئيسية وبدء محاولة جديدة", this.canvas.width / 2, actBtnY + 35);
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "14px system-ui, sans-serif";
+        ctx.fillText("انقر في أي مكان على الشاشة أو اضغط [مسافة] للعودة فوراً", this.canvas.width / 2, cy + 575);
+    }
+
+    renderGameOverOverlay(ctx) {
+        this.renderResultsOverlay(ctx, false, this.gameOverReason || "انتهاء المحاولات");
     }
 
     renderVictoryOverlay(ctx) {
-        ctx.fillStyle = "rgba(7, 13, 30, 0.94)";
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        const cx = this.canvas.width / 2;
-        const cy = this.canvas.height / 2;
-
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#ffd700";
-        ctx.font = "bold 44px system-ui, sans-serif";
-        ctx.fillText("🏆 مبروك يا بطل الرياضيات!", cx, cy - 100);
-
-        ctx.fillStyle = "#4ade80";
-        ctx.font = "bold 26px system-ui, sans-serif";
-        ctx.fillText("أتقنت كافة معايير الأعداد النسبية بنجاح 🌟", cx, cy - 45);
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "22px system-ui, sans-serif";
-        ctx.fillText(`مجموع نقاطك: ${this.score}  |  الدقة: ${this.telemetry.getAccuracyRate()}`, cx, cy + 15);
-
-        ctx.fillStyle = "#60a5fa";
-        ctx.font = "bold 20px system-ui, sans-serif";
-        ctx.fillText("انقر على الشاشة لخوض التحدي من جديد 🎮", cx, cy + 100);
-
-        this.canvas.onclick = () => {
-            this.canvas.onclick = null;
-            this.restartGame();
-        };
+        this.renderResultsOverlay(ctx, true, "فوز وتفوق تام");
     }
 }
 

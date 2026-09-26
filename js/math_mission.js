@@ -209,7 +209,7 @@ class MathMissionManager {
                     }
                 } else {
                     result.pointsDelta += GAME_CONFIG.PENALTY_PER_TRAP;
-                    this.addFloatingText(player.pixelX, player.pixelY - 18, `-30 ⚠️ ${mt.label}`, "#ef4444");
+                    this.addFloatingText(player.pixelX, player.pixelY - 18, `⚠️ تمويه خاطئ (${mt.label})`, "#f87171");
                     if (telemetry) telemetry.recordAnswer(mt.label, false, mt.misconception);
                 }
                 break;
