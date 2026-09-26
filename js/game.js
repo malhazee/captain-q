@@ -208,7 +208,7 @@ class CaptainQGame {
             this.player.reset(pSpawn, this.mazeOffsetX, this.mazeOffsetY);
         }
         this.player.permanentShield = prevPermanentShield;
-        this.player.speed = levelConfig.playerSpeed || 1.35;
+        this.player.speed = levelConfig.playerSpeed || 2.2;
 
         // Ghosts: Start from the 4 outer corners!
         const gColors = [
@@ -224,7 +224,7 @@ class CaptainQGame {
             const corner = { c: gInfo.c, r: gInfo.r };
             const g = new Ghost(gInfo.id, gInfo.name, gInfo.color, corner, tileSize, this.mazeOffsetX, this.mazeOffsetY, gInfo.dir);
             g.reset(corner, "CHASE", 0, this.mazeOffsetX, this.mazeOffsetY, gInfo.dir);
-            g.speed = levelConfig.ghostSpeed || 0.85;
+            g.speed = levelConfig.ghostSpeed || 1.5;
             this.ghosts.push(g);
         }
 

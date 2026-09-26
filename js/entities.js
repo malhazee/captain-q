@@ -18,7 +18,7 @@ class Player {
         this.dir = DIR.NONE;
         this.nextDir = DIR.NONE;
         this.facingDir = DIR.EAST;
-        this.speed = 1.35; // Calm, deliberate, accessible educational arcade speed
+        this.speed = 2.2; // Fast, responsive arcade speed
         this.shieldTimer = 0; // frames of invincibility
         this.permanentShield = false; // toggleable permanent invincibility mode
         
@@ -257,7 +257,7 @@ class Ghost {
         this.pixelY = this.offsetY + (this.gridY + 0.5) * tileSize;
 
         this.dir = initialDir;
-        this.speed = 0.85; // tuned smooth ghost speed
+        this.speed = 1.5; // Fast, responsive ghost speed
         this.state = "CHASE"; // WAITING, EXITING, CHASE, SCATTER, FRIGHTENED, EATEN
         this.exitDelay = 0;
         this.frightenedTimer = 0;
