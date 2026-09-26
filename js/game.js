@@ -91,6 +91,17 @@ class CaptainQGame {
             });
         }
 
+        // Shield button
+        const shieldBtn = document.getElementById("btn_shield");
+        if (shieldBtn) {
+            const onShield = (e) => {
+                if (e) e.preventDefault();
+                this.activateShield(8);
+            };
+            shieldBtn.addEventListener("click", onShield);
+            shieldBtn.addEventListener("touchstart", onShield, { passive: false });
+        }
+
         // Pause button
         const pauseBtn = document.getElementById("btn_pause");
         if (pauseBtn) {
@@ -145,7 +156,7 @@ class CaptainQGame {
             this.player.tileSize = tileSize;
             this.player.reset(pSpawn, this.mazeOffsetX, this.mazeOffsetY);
         }
-        this.player.speed = levelConfig.playerSpeed || 3.2;
+        this.player.speed = levelConfig.playerSpeed || 2.2;
 
         // Ghosts: Spaced out across house & entrance so all 4 ghosts are visible and roam!
         const cx = Math.floor(this.maze.cols / 2);
@@ -165,13 +176,20 @@ class CaptainQGame {
             const gInfo = gColors[i];
             const g = new Ghost(gInfo.id, gInfo.name, gInfo.color, gInfo.corner, tileSize, this.mazeOffsetX, this.mazeOffsetY);
             g.reset(gInfo.spawn, gInfo.state, gInfo.exitDelay, this.mazeOffsetX, this.mazeOffsetY);
-            g.speed = levelConfig.ghostSpeed || 2.2;
+            g.speed = levelConfig.ghostSpeed || 1.4;
             this.ghosts.push(g);
         }
 
         // Mission & Collectibles
         this.missionMgr.loadLevel(this.levelIndex, this.maze);
         this.levelTimer = GAME_CONFIG.LEVEL_TIME_LIMIT;
+    }
+
+    activateShield(durationSec = 7) {
+        if (!this.player) return;
+        this.player.activateShield(durationSec);
+        audio.playSuperDot();
+        this.missionMgr.addFloatingText(this.player.pixelX, this.player.pixelY, "🛡️ درع الحماية مفعّل!", "#38bdf8");
     }
 
     startLevelIntro() {
@@ -191,6 +209,13 @@ class CaptainQGame {
 
         this.update(dt);
         this.render();
+
+        // Update shield button visual state
+        const shieldBtn = document.getElementById("btn_shield");
+        if (shieldBtn && this.player) {
+            if (this.player.isShieldActive()) shieldBtn.classList.add("active");
+            else shieldBtn.classList.remove("active");
+        }
 
         requestAnimationFrame((ts) => this.gameLoop(ts));
     }
@@ -230,7 +255,9 @@ class CaptainQGame {
 
         if (colRes.superDotEaten) {
             audio.playSuperDot();
+            this.player.activateShield(GAME_CONFIG.SUPER_DOT_DURATION);
             this.ghosts.forEach(g => g.setFrightened(GAME_CONFIG.SUPER_DOT_DURATION));
+            this.missionMgr.addFloatingText(this.player.pixelX, this.player.pixelY, "🛡️ سوبر باكغم (الدرع مفعل)!", "#38bdf8");
         }
 
         // Level Clear condition
@@ -255,12 +282,13 @@ class CaptainQGame {
             // Distance to player
             const dist = Math.hypot(ghost.pixelX - this.player.pixelX, ghost.pixelY - this.player.pixelY);
             if (dist < (this.player.radius + ghost.radius) * 0.75) {
-                if (ghost.state === "FRIGHTENED") {
+                // If ghost is frightened OR player has active Shield Mode!
+                if (ghost.state === "FRIGHTENED" || this.player.isShieldActive()) {
                     // Eat ghost!
                     ghost.state = "EATEN";
                     this.score += 200;
                     audio.playGhostEaten();
-                    this.missionMgr.addFloatingText(ghost.pixelX, ghost.pixelY, "+200 👻", "#67e8f9");
+                    this.missionMgr.addFloatingText(ghost.pixelX, ghost.pixelY, "+200 🛡️👻", "#38bdf8");
                 } else if (ghost.state === "CHASE" || ghost.state === "SCATTER") {
                     this.handlePlayerDeath(`اصطدام بالشبح ${ghost.name}`);
                     return;
@@ -525,10 +553,15 @@ class CaptainQGame {
         ctx.font = "bold 18px system-ui, sans-serif";
         ctx.fillText(`النقاط: ${this.score}`, 18, 25);
 
-        let hearts = "";
-        for (let i = 0; i < this.lives; i++) hearts += "❤️ ";
+        let statusText = "";
+        for (let i = 0; i < this.lives; i++) statusText += "❤️ ";
+        if (this.player && this.player.isShieldActive()) {
+            const sSec = Math.ceil(this.player.shieldTimer / 60);
+            statusText += ` | 🛡️ ${sSec}ث`;
+        }
         ctx.font = "15px system-ui, sans-serif";
-        ctx.fillText(hearts || "💀", 18, 48);
+        ctx.fillStyle = (this.player && this.player.isShieldActive()) ? "#38bdf8" : "#ffffff";
+        ctx.fillText(statusText || "💀", 18, 48);
 
         // Center Time Bar
         const timeRatio = Math.max(0, this.levelTimer / GAME_CONFIG.LEVEL_TIME_LIMIT);

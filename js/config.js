@@ -62,10 +62,10 @@ const GAME_CONFIG = {
             prompt: "التقط مكافئات النصف 1/2 (0.5)",
             targets: ["1/2", "2/4", "3/6", "5/10", "0.5"],
             traps: ["1/3", "0.05", "-0.5", "2/5"],
-            neededCount: 4,
-            ghostCount: 2,
-            playerSpeed: 3.2,
-            ghostSpeed: 2.2
+            neededCount: 5,
+            ghostCount: 4,
+            playerSpeed: 2.2,
+            ghostSpeed: 1.4
         },
         {
             level: 2,
@@ -73,10 +73,10 @@ const GAME_CONFIG = {
             prompt: "التقط الأعداد النسبية السالبة (أقل من صفر)",
             targets: ["-1/2", "-0.75", "-3/4", "-1.5", "-2"],
             traps: ["+0.5", "3/4", "0", "1.2"],
-            neededCount: 4,
-            ghostCount: 3,
-            playerSpeed: 3.3,
-            ghostSpeed: 2.4
+            neededCount: 5,
+            ghostCount: 4,
+            playerSpeed: 2.25,
+            ghostSpeed: 1.45
         },
         {
             level: 3,
@@ -84,10 +84,10 @@ const GAME_CONFIG = {
             prompt: "التقط مكافئات 3/4 والنسب المئوية (75%)",
             targets: ["6/8", "9/12", "75%", "0.75", "15/20"],
             traps: ["3/5", "0.34", "4/3", "7/10"],
-            neededCount: 4,
-            ghostCount: 3,
-            playerSpeed: 3.4,
-            ghostSpeed: 2.6
+            neededCount: 5,
+            ghostCount: 4,
+            playerSpeed: 2.3,
+            ghostSpeed: 1.5
         },
         {
             level: 4,
@@ -95,10 +95,10 @@ const GAME_CONFIG = {
             prompt: "التقط أعداداً قيمتها المطلقة |س| أقل من أو تساوي 1",
             targets: ["-0.4", "-0.8", "-2/3", "0.25", "1"],
             traps: ["-2.5", "5/2", "-3", "1.8"],
-            neededCount: 4,
+            neededCount: 5,
             ghostCount: 4,
-            playerSpeed: 3.5,
-            ghostSpeed: 2.7
+            playerSpeed: 2.35,
+            ghostSpeed: 1.55
         },
         {
             level: 5,
@@ -106,10 +106,10 @@ const GAME_CONFIG = {
             prompt: "التقط الكسور الفعلية التي تقع بين 0 و 1",
             targets: ["1/4", "2/3", "4/5", "3/8", "5/6"],
             traps: ["5/4", "1.5", "-1/3", "3/2"],
-            neededCount: 4,
+            neededCount: 5,
             ghostCount: 4,
-            playerSpeed: 3.6,
-            ghostSpeed: 2.8
+            playerSpeed: 2.4,
+            ghostSpeed: 1.6
         },
         {
             level: 6,
@@ -119,8 +119,8 @@ const GAME_CONFIG = {
             traps: ["1/0", "5/0", "0/0", "pi"],
             neededCount: 5,
             ghostCount: 4,
-            playerSpeed: 3.7,
-            ghostSpeed: 2.9
+            playerSpeed: 2.45,
+            ghostSpeed: 1.65
         }
     ]
 };

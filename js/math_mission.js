@@ -21,7 +21,8 @@ class MathMissionManager {
         this.levelIndex = levelIndex;
         this.currentLevel = GAME_CONFIG.LEVELS[levelIndex % GAME_CONFIG.LEVELS.length];
         this.collectedCount = 0;
-        this.neededCount = this.currentLevel.neededCount || 4;
+        // Require ALL correct targets to clear the level!
+        this.neededCount = (this.currentLevel.targets && this.currentLevel.targets.length) ? this.currentLevel.targets.length : 5;
         this.floatingTexts = [];
 
         this.spawnCollectibles(maze);
@@ -39,16 +40,29 @@ class MathMissionManager {
         // Shuffle cells
         const shuffled = [...walkable].sort(() => Math.random() - 0.5);
 
-        // 1. Place 4 Super Dots near the 4 corners
+        // 1. Place Super Pacgum in the 4 outer corners
         const corners = [
-            { c: 2, r: 2 },
-            { c: maze.cols - 3, r: 2 },
-            { c: 2, r: maze.rows - 3 },
-            { c: maze.cols - 3, r: maze.rows - 3 }
+            { c: 1, r: 1 },
+            { c: maze.cols - 2, r: 1 },
+            { c: 1, r: maze.rows - 2 },
+            { c: maze.cols - 2, r: maze.rows - 2 }
         ];
+
+        const usedCells = new Set();
         corners.forEach(corner => {
-            if (maze.isPassable(corner.c, corner.r)) {
-                this.superDots.push({ c: corner.c, r: corner.r });
+            // Find nearest walkable cell to corner
+            let bestCorner = null;
+            let minD = Infinity;
+            walkable.forEach(cell => {
+                const d = Math.hypot(cell.c - corner.c, cell.r - corner.r);
+                if (d < minD && !usedCells.has(`${cell.c},${cell.r}`)) {
+                    minD = d;
+                    bestCorner = cell;
+                }
+            });
+            if (bestCorner && minD <= 2.5) {
+                this.superDots.push({ c: bestCorner.c, r: bestCorner.r });
+                usedCells.add(`${bestCorner.c},${bestCorner.r}`);
             }
         });
 
@@ -57,42 +71,71 @@ class MathMissionManager {
         const traps = this.currentLevel.traps || [];
         const cardsToPlace = [];
 
-        // Add all targets
         targets.forEach(t => cardsToPlace.push({ label: t, isTarget: true, misconception: "" }));
-        // Add all traps
         traps.forEach(t => cardsToPlace.push({
             label: t,
             isTarget: false,
             misconception: GAME_CONFIG.MISCONCEPTIONS[t] || "مفهوم رياضي بحاجة لتدريب"
         }));
 
-        // Shuffle cards
         cardsToPlace.sort(() => Math.random() - 0.5);
 
-        // 3. Place Math Cards evenly in maze
-        const usedCells = new Set();
-        this.superDots.forEach(sd => usedCells.add(`${sd.c},${sd.r}`));
+        // 3. Place Math Cards spaced out evenly (minimum distance constraint)
         const playerSpawn = maze.getPlayerSpawn();
         usedCells.add(`${playerSpawn.c},${playerSpawn.r}`);
 
-        let cardIdx = 0;
-        for (let cell of shuffled) {
-            const key = `${cell.c},${cell.r}`;
-            if (usedCells.has(key)) continue;
+        const placedCards = [];
+        const minDistance = 3.6; // Spaced out across maze quadrants
 
-            if (cardIdx < cardsToPlace.length) {
-                const card = cardsToPlace[cardIdx++];
+        for (let card of cardsToPlace) {
+            let bestCell = null;
+            let maxMinDist = -1;
+
+            for (let cell of shuffled) {
+                const key = `${cell.c},${cell.r}`;
+                if (usedCells.has(key)) continue;
+
+                // Ensure distance from player spawn
+                const distToPlayer = Math.hypot(cell.c - playerSpawn.c, cell.r - playerSpawn.r);
+                if (distToPlayer < 2.5) continue;
+
+                // Ensure distance from other placed cards
+                let distToPlaced = Infinity;
+                for (let placed of placedCards) {
+                    const d = Math.hypot(cell.c - placed.c, cell.r - placed.r);
+                    if (d < distToPlaced) distToPlaced = d;
+                }
+
+                if (distToPlaced >= minDistance) {
+                    bestCell = cell;
+                    break;
+                }
+
+                if (distToPlaced > maxMinDist) {
+                    maxMinDist = distToPlaced;
+                    bestCell = cell;
+                }
+            }
+
+            if (bestCell) {
                 this.mathTiles.push({
-                    c: cell.c,
-                    r: cell.r,
+                    c: bestCell.c,
+                    r: bestCell.r,
                     label: card.label,
                     isTarget: card.isTarget,
                     misconception: card.misconception,
                     pulse: Math.random() * Math.PI * 2
                 });
+                const key = `${bestCell.c},${bestCell.r}`;
                 usedCells.add(key);
-            } else if (this.dots.length < 35) {
-                // Place regular pac-dots
+                placedCards.push(bestCell);
+            }
+        }
+
+        // 4. Fill remaining open corridors with regular dots
+        for (let cell of shuffled) {
+            const key = `${cell.c},${cell.r}`;
+            if (!usedCells.has(key) && this.dots.length < 32) {
                 this.dots.push({ c: cell.c, r: cell.r });
                 usedCells.add(key);
             }

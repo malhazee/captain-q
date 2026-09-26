@@ -40,6 +40,11 @@ class InputHandler {
                     this.player.setNextDir(DIR.EAST);
                     e.preventDefault();
                     break;
+                case " ":
+                case "1":
+                    if (window.gameInstance) window.gameInstance.activateShield();
+                    e.preventDefault();
+                    break;
             }
         });
     }

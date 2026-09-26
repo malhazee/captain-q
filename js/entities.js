@@ -24,7 +24,8 @@ class Player {
         this.dir = DIR.NONE;
         this.nextDir = DIR.NONE;
         this.facingDir = DIR.EAST;
-        this.speed = 3.2; // pixels per frame
+        this.speed = 2.2; // pixels per frame (tuned smooth arcade speed)
+        this.shieldTimer = 0; // frames of invincibility
         
         // Animation
         this.mouthAngle = 0.2;
@@ -42,6 +43,15 @@ class Player {
         this.dir = DIR.NONE;
         this.nextDir = DIR.NONE;
         this.facingDir = DIR.EAST;
+        this.shieldTimer = 0;
+    }
+
+    activateShield(durationSec = 6) {
+        this.shieldTimer = durationSec * 60;
+    }
+
+    isShieldActive() {
+        return this.shieldTimer > 0;
     }
 
     setNextDir(direction) {
@@ -49,6 +59,10 @@ class Player {
     }
 
     update(maze) {
+        if (this.shieldTimer > 0) {
+            this.shieldTimer--;
+        }
+
         // Mouth animation
         if (this.dir !== DIR.NONE) {
             if (this.mouthOpening) {
@@ -128,8 +142,38 @@ class Player {
         ctx.save();
         ctx.translate(this.pixelX, this.pixelY);
 
-        // Sanctuary Safe Zone Shield Aura
-        if (isSanctuary) {
+        // 1. Invincible / Power Shield Mode Aura
+        if (this.isShieldActive()) {
+            ctx.save();
+            const pulse = (Math.sin(Date.now() / 100) + 1) * 0.5;
+            const shieldRadius = this.radius * (1.38 + pulse * 0.22);
+
+            // Radiant cyan/gold outer shield sphere
+            ctx.beginPath();
+            ctx.arc(0, 0, shieldRadius, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(56, 189, 248, 0.28)";
+            ctx.fill();
+            ctx.strokeStyle = "#38bdf8";
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = "#38bdf8";
+            ctx.shadowBlur = 14;
+            ctx.stroke();
+
+            // Inner spinning energy arc
+            const spin = Date.now() / 140;
+            ctx.beginPath();
+            ctx.arc(0, 0, shieldRadius * 0.86, spin, spin + Math.PI * 1.25);
+            ctx.strokeStyle = "#ffd700";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Shield status badge
+            ctx.font = `bold ${Math.round(this.radius * 0.72)}px system-ui, sans-serif`;
+            ctx.textAlign = "center";
+            ctx.fillText("🛡️", 0, -shieldRadius - 3);
+            ctx.restore();
+        } else if (isSanctuary) {
+            // Sanctuary Safe Zone Shield Aura
             ctx.save();
             const pulse = (Math.sin(Date.now() / 160) + 1) * 0.5;
             const shieldRadius = this.radius * (1.3 + pulse * 0.18);
@@ -141,7 +185,6 @@ class Player {
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // Floating shield indicator
             ctx.font = `${Math.round(this.radius * 0.7)}px system-ui, sans-serif`;
             ctx.textAlign = "center";
             ctx.fillText("🛡️", 0, -shieldRadius - 2);
@@ -192,7 +235,7 @@ class Ghost {
         this.pixelY = this.offsetY + (this.gridY + 0.5) * tileSize;
 
         this.dir = DIR.NORTH;
-        this.speed = 2.2;
+        this.speed = 1.4; // tuned smooth ghost speed
         this.state = "CHASE"; // WAITING, EXITING, CHASE, SCATTER, FRIGHTENED, EATEN
         this.exitDelay = 0;
         this.frightenedTimer = 0;
@@ -250,7 +293,7 @@ class Ghost {
             } else {
                 this.pixelX = centerTargetX;
                 this.dir = DIR.NORTH;
-                this.pixelY -= 2.0; // Move up through door
+                this.pixelY -= 1.6; // Move up through door
                 if (this.pixelY <= exitTargetY) {
                     this.pixelY = exitTargetY;
                     this.gridX = cx;
@@ -273,8 +316,8 @@ class Ghost {
             }
         }
 
-        const currentSpeed = this.state === "FRIGHTENED" ? this.speed * 0.65 :
-                             this.state === "EATEN" ? this.speed * 2.2 : this.speed;
+        const currentSpeed = this.state === "FRIGHTENED" ? this.speed * 0.6 :
+                             this.state === "EATEN" ? this.speed * 2.0 : this.speed;
 
         const cellKey = `${this.gridX},${this.gridY}`;
         const centerPixelX = this.offsetX + (this.gridX + 0.5) * this.tileSize;
@@ -300,7 +343,7 @@ class Ghost {
         if (!reachedCenter && this.dir !== DIR.NONE) {
             const nextAheadC = this.gridX + this.dir.dx;
             const nextAheadR = this.gridY + this.dir.dy;
-            if (!maze.isPassable(nextAheadC, nextAheadR, this.state === "EATEN")) {
+            if (!maze.isPassable(nextAheadC, nextAheadR, this.state === "EATEN", true)) {
                 reachedCenter = true;
             }
         }
@@ -326,7 +369,7 @@ class Ghost {
 
         // Check if Eaten reached sanctuary door
         if (this.state === "EATEN") {
-            if (this.gridX === cx && this.gridY === cy - 2) {
+            if (this.gridX === cx && (this.gridY === cy - 2 || this.gridY === cy - 3)) {
                 this.state = "EXITING";
             }
         }
@@ -336,25 +379,32 @@ class Ghost {
         let target = { c: player.gridX, r: player.gridY };
 
         if (this.state === "SCATTER") {
+            // Scatter mode: target assigned home corner
             target = this.cornerCell;
         } else if (this.state === "FRIGHTENED") {
-            target = {
-                c: Math.floor(Math.random() * maze.cols),
-                r: Math.floor(Math.random() * maze.rows)
-            };
+            // Frightened: direct evasion fleeing away from player (matching Python FrightenedBehavior)
+            const dx = this.gridX - player.gridX;
+            const dy = this.gridY - player.gridY;
+            target = { c: this.gridX + dx * 4, r: this.gridY + dy * 4 };
         } else if (this.state === "EATEN") {
             target = { c: sanctuaryCenter.c, r: sanctuaryCenter.r - 2 };
         } else {
-            // Distinct Ghost AI:
-            if (this.id === 1) { // Blinky (Red): Direct chase
+            // Classical Python GhostBehavior Algorithms:
+            if (this.id === 1) {
+                // Blinky (Red): Direct pursuit of player position
                 target = { c: player.gridX, r: player.gridY };
-            } else if (this.id === 2) { // Pinky (Pink): Ambush 3 tiles ahead
-                target = { c: player.gridX + player.dir.dx * 3, r: player.gridY + player.dir.dy * 3 };
-            } else if (this.id === 3) { // Inky (Cyan): Flanker
-                target = { c: player.gridX - player.dir.dx * 2, r: player.gridY - player.dir.dy * 2 };
-            } else if (this.id === 4) { // Clyde (Orange): Shy
-                const distToP = Math.hypot(this.gridX - player.gridX, this.gridY - player.gridY);
-                target = distToP > 6 ? { c: player.gridX, r: player.gridY } : this.cornerCell;
+            } else if (this.id === 2) {
+                // Pinky (Pink): Ambush 4 cells ahead of player
+                target = { c: player.gridX + player.dir.dx * 4, r: player.gridY + player.dir.dy * 4 };
+            } else if (this.id === 3) {
+                // Inky (Cyan): Flanking strategy offset from player and corner
+                const leadX = player.gridX + player.dir.dx * 2;
+                const leadY = player.gridY + player.dir.dy * 2;
+                target = { c: leadX * 2 - this.cornerCell.c, r: leadY * 2 - this.cornerCell.r };
+            } else if (this.id === 4) {
+                // Clyde (Orange): Distance-dependent strategy (chases when far > 4 cells, retreats when close)
+                const distSq = (this.gridX - player.gridX) ** 2 + (this.gridY - player.gridY) ** 2;
+                target = (distSq > 16) ? { c: player.gridX, r: player.gridY } : this.cornerCell;
             }
         }
 
@@ -375,7 +425,8 @@ class Ghost {
             }
 
             if (maze.isPassable(nextC, nextR, canPassDoor, true)) {
-                const dist = Math.hypot(nextC - target.c, nextR - target.r);
+                // Squared distance to target (matching Python _find_closest_direction)
+                const dist = (nextC - target.c) ** 2 + (nextR - target.r) ** 2;
                 validDirs.push({ dir: d, dist });
             }
         }

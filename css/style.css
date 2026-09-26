@@ -97,6 +97,7 @@ html, body {
 }
 
 .dpad-cluster {
+    direction: ltr !important; /* Strictly lock LTR layout so Left is Left and Right is Right */
     display: grid;
     grid-template-columns: repeat(3, 56px);
     grid-template-rows: repeat(3, 56px);
@@ -131,13 +132,13 @@ html, body {
 .action-cluster {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     pointer-events: auto;
 }
 
 .action-btn {
-    width: 54px;
-    height: 54px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
     font-size: 22px;
     display: flex;
@@ -147,10 +148,29 @@ html, body {
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
     cursor: pointer;
     touch-action: none;
+    transition: transform 0.1s, box-shadow 0.15s;
 }
 
 .action-btn:active {
     transform: scale(0.92);
+}
+
+.shield-btn {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    border-color: #38bdf8;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+}
+
+.shield-btn.active {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-color: #34d399;
+    box-shadow: 0 0 18px rgba(52, 211, 153, 0.85);
+    animation: pulseShieldBtn 0.8s infinite alternate;
+}
+
+@keyframes pulseShieldBtn {
+    from { transform: scale(1); }
+    to { transform: scale(1.12); }
 }
 
 .reg-btn {
