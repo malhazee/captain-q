@@ -129,16 +129,20 @@ class TelemetryTracker {
 
     getDefaultLeaderboard() {
         return [
-            { rank: 1, name: "زيد المحاسيس", section: "شعبة أ", score: 3000, accuracy: "100%", level: 6 },
-            { rank: 2, name: "عمر الطراونة", section: "شعبة ب", score: 2900, accuracy: "96.7%", level: 6 },
-            { rank: 3, name: "سيف الدين العمري", section: "شعبة أ", score: 2800, accuracy: "93.3%", level: 6 },
-            { rank: 4, name: "حمزة النوايسة", section: "شعبة ج", score: 2700, accuracy: "90.0%", level: 6 },
-            { rank: 5, name: "كرم بني هاني", section: "شعبة د", score: 2600, accuracy: "87.5%", level: 6 },
-            { rank: 6, name: "أحمد الشوابكة", section: "شعبة أ", score: 2500, accuracy: "86.2%", level: 5 },
-            { rank: 7, name: "هاشم الخوالدة", section: "شعبة ب", score: 2400, accuracy: "84.0%", level: 5 },
-            { rank: 8, name: "يحيى الرواشدة", section: "شعبة ج", score: 2300, accuracy: "81.8%", level: 5 },
-            { rank: 9, name: "عبدالله العبادي", section: "شعبة أ", score: 2100, accuracy: "80.0%", level: 5 },
-            { rank: 10, name: "فيصل المجالي", section: "شعبة د", score: 2000, accuracy: "78.5%", level: 4 }
+            { rank: 1, name: "كريم عدي الزعبي", section: "شعبة أ", score: 3000, accuracy: "100%", level: 6 },
+            { rank: 2, name: "مصعب", section: "شعبة ج", score: 3000, accuracy: "100%", level: 6 },
+            { rank: 3, name: "هيثم يوسف الخطيب", section: "شعبة ب", score: 3000, accuracy: "100%", level: 6 },
+            { rank: 4, name: "محمود عدي الزعبي", section: "شعبة أ", score: 2810, accuracy: "90.9%", level: 6 },
+            { rank: 5, name: "وسام علي ابراهيم الزعبي", section: "شعبة أ", score: 2780, accuracy: "88.2%", level: 6 },
+            { rank: 6, name: "أحمد رسول الزعبي", section: "شعبة أ", score: 2750, accuracy: "85.7%", level: 6 },
+            { rank: 7, name: "مهند يزن الزعبي", section: "شعبة ج", score: 2750, accuracy: "85.7%", level: 6 },
+            { rank: 8, name: "عمر باسل الزعبي", section: "شعبة ج", score: 2690, accuracy: "81.1%", level: 6 },
+            { rank: 9, name: "احمد سليمان عارف", section: "شعبة ب", score: 2690, accuracy: "81.1%", level: 6 },
+            { rank: 10, name: "عبدالله عدنان شقيرات", section: "شعبة أ", score: 2690, accuracy: "81.1%", level: 6 },
+            { rank: 11, name: "ابراهيم مفلح الزعبي", section: "شعبة ب", score: 2660, accuracy: "78.9%", level: 6 },
+            { rank: 12, name: "محمد معاذ عارف", section: "شعبة ج", score: 2660, accuracy: "78.9%", level: 6 },
+            { rank: 13, name: "سامي طارق سامي", section: "شعبة ب", score: 2600, accuracy: "75.0%", level: 5 },
+            { rank: 14, name: "محمد أحمد الزعبي", section: "شعبة ج", score: 2600, accuracy: "75.0%", level: 5 }
         ];
     }
 
@@ -147,12 +151,21 @@ class TelemetryTracker {
             const raw = localStorage.getItem("captain_q_public_leaderboard");
             if (raw) {
                 const list = JSON.parse(raw);
-                if (Array.isArray(list) && list.length > 0) return list;
+                if (Array.isArray(list) && list.length > 0) {
+                    const hasOldPlaceholder = list.some(item => item.name === "زيد المحاسيس" || item.name === "عمر الطراونة");
+                    if (!hasOldPlaceholder) {
+                        return list;
+                    }
+                }
             }
         } catch (e) {
             console.warn("Error reading local leaderboard:", e);
         }
-        return this.getDefaultLeaderboard();
+        const realDefaults = this.getDefaultLeaderboard();
+        try {
+            localStorage.setItem("captain_q_public_leaderboard", JSON.stringify(realDefaults));
+        } catch (e) {}
+        return realDefaults;
     }
 
     updateLocalLeaderboard(name, section, score, accuracy, level) {
