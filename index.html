@@ -17,9 +17,13 @@
 <body>
 
     <div id="app_container">
-        <!-- Top student badge -->
+        <!-- Top student badge & Quick Actions -->
         <div id="student_badge_bar">
             <div id="student_badge">👤 طالب مجهول (شعبة أ)</div>
+            <div style="display: flex; gap: 8px;">
+                <button id="btn_quick_help" class="badge-action-btn" title="تعليمات المهمة">📜</button>
+                <button id="btn_quick_sound" class="badge-action-btn" title="تبديل الصوت">🔊</button>
+            </div>
         </div>
 
         <!-- 1:1 Square Game Canvas -->
@@ -42,28 +46,59 @@
 
             <!-- Action buttons -->
             <div class="action-cluster">
-                <button id="btn_reg" class="action-btn reg-btn" title="تعديل الاسم">👤</button>
+                <button id="btn_reg" class="action-btn reg-btn" title="تعديل الاسم والتعليمات">👤</button>
                 <button id="btn_pause" class="action-btn pause-btn" title="إيقاف مؤقت">⏸️</button>
             </div>
         </div>
 
-        <!-- Student Name & Section Modal -->
+        <!-- Start / Welcome Screen (شاشة البداية والتسجيل) -->
         <div id="mobile_reg_modal">
             <div class="modal-card">
-                <div class="modal-title">🎮 كابتن كيو (Captain-Q)</div>
-                <div class="modal-sub">مبادرة الرياضيات - الصف السابع</div>
+                <!-- Title & Hero Header -->
+                <div class="hero-badge">مبادرة جائزة الملكة رانيا للتميز التربوي 🇯🇴</div>
+                <div class="modal-title">🛡️ كابتن كيو (Captain-Q)</div>
+                <div class="modal-sub">مغامرة الأعداد النسبية - منهاج الرياضيات للصف السابع</div>
 
-                <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 8px; text-align: right;">اسم الطالب الثلاثي:</div>
-                <input type="text" id="mobile_name_input" class="modal-input" placeholder="اكتب اسمك الثلاثي هنا..." maxlength="30" autocomplete="off" autofocus>
-
-                <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 8px; text-align: right;">الشعبة الدراسية:</div>
-                <div class="section-selector">
-                    <button class="sec-btn selected">شعبة أ</button>
-                    <button class="sec-btn">شعبة ب</button>
-                    <button class="sec-btn">شعبة ج</button>
+                <!-- Student Information Card -->
+                <div class="form-group">
+                    <label class="form-label" for="mobile_name_input">👤 اسم بطل الرياضيات الثلاثي:</label>
+                    <input type="text" id="mobile_name_input" class="modal-input" placeholder="اكتب اسمك الثلاثي هنا..." maxlength="30" autocomplete="off" autofocus>
                 </div>
 
-                <button id="btn_modal_start" class="start-btn">انطلق نحو التحدي 🚀</button>
+                <div class="form-group">
+                    <label class="form-label">🏫 الشعبة الدراسية:</label>
+                    <div class="section-selector">
+                        <button class="sec-btn selected">شعبة أ</button>
+                        <button class="sec-btn">شعبة ب</button>
+                        <button class="sec-btn">شعبة ج</button>
+                        <button class="sec-btn">شعبة د</button>
+                    </div>
+                </div>
+
+                <!-- Educational Mission Briefing & Safe Sanctuary Card -->
+                <div class="guide-box">
+                    <div class="guide-title">📜 دليل المهمة والملاذ الآمن:</div>
+                    <div class="guide-item">
+                        <span class="guide-icon">🎯</span>
+                        <div class="guide-text"><strong>الهدف:</strong> التقط بطاقات الأعداد النسبية المكافئة المطلوبة في أعلى الشاشة.</div>
+                    </div>
+                    <div class="guide-item">
+                        <span class="guide-icon">⚠️</span>
+                        <div class="guide-text"><strong>احذر الأفخاخ:</strong> تجنب المفاهيم الخاطئة والأعداد غير المطابقة (<span style="color:#f87171">-30 نقطة</span>).</div>
+                    </div>
+                    <div class="guide-item">
+                        <span class="guide-icon">🛡️</span>
+                        <div class="guide-text"><strong>مساحة الملاذ الآمن:</strong> الغرفة الخضراء المركزية تحميك تماماً؛ الأشباح لا تستطيع مهاجمتك داخلها!</div>
+                    </div>
+                    <div class="guide-item">
+                        <span class="guide-icon">⚡</span>
+                        <div class="guide-text"><strong>الكرات الخارقة:</strong> تجعل الأشباح زرقاء وخائفة لتلتقطها وتحصل على (<span style="color:#67e8f9">+200 نقطة</span>).</div>
+                    </div>
+                </div>
+
+                <!-- Primary Action Buttons -->
+                <button id="btn_modal_start" class="start-btn">انطلق في المغامرة الآن 🚀</button>
+                <button id="btn_sound_toggle" class="sound-toggle-btn">🔊 المؤثرات الصوتية: مفعلة</button>
             </div>
         </div>
     </div>

@@ -161,86 +161,129 @@ html, body {
     background: #c62828;
 }
 
-/* Registration Modal */
+.badge-action-btn {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid #3b82f6;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    color: #fff;
+    transition: background 0.15s;
+}
+
+.badge-action-btn:active {
+    background: #2563eb;
+}
+
+/* Start / Welcome Screen Modal */
 #mobile_reg_modal {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(7, 13, 30, 0.95);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: rgba(7, 13, 30, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     z-index: 99999;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
+    padding: 12px;
     box-sizing: border-box;
+    overflow-y: auto;
 }
 
 .modal-card {
-    background: linear-gradient(145deg, #111e38, #091024);
+    background: linear-gradient(155deg, #0f1c38, #080f22);
     border: 2px solid #3b82f6;
-    border-radius: 16px;
-    padding: 24px 20px;
+    border-radius: 18px;
+    padding: 20px 18px;
     width: 100%;
-    max-width: 360px;
+    max-width: 420px;
+    max-height: 94vh;
+    overflow-y: auto;
     text-align: center;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.9), 0 0 20px rgba(59, 130, 246, 0.25);
     color: #FFFFFF;
 }
 
+.hero-badge {
+    display: inline-block;
+    background: rgba(30, 58, 138, 0.6);
+    border: 1px solid #60a5fa;
+    color: #93c5fd;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+}
+
 .modal-title {
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 900;
-    color: #60a5fa;
+    color: #ffd700;
     margin-bottom: 4px;
-    text-shadow: 0 0 12px rgba(96, 165, 250, 0.5);
+    text-shadow: 0 0 14px rgba(255, 215, 0, 0.4);
+    letter-spacing: 0.5px;
 }
 
 .modal-sub {
-    font-size: 13px;
-    color: #ffd700;
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+.form-group {
+    margin-bottom: 12px;
+    text-align: right;
+}
+
+.form-label {
+    display: block;
+    font-size: 12px;
+    color: #cbd5e1;
     font-weight: bold;
-    margin-bottom: 16px;
+    margin-bottom: 6px;
 }
 
 .modal-input {
     width: 100%;
-    padding: 12px;
+    padding: 10px 14px;
     border-radius: 10px;
-    border: 2px solid #3b82f6;
-    background: #070d1e;
+    border: 2px solid #2563eb;
+    background: #091228;
     color: #fff;
-    font-size: 16px;
+    font-size: 15px;
     text-align: center;
     font-weight: bold;
     outline: none;
-    margin-bottom: 14px;
     box-sizing: border-box;
+    transition: all 0.2s;
 }
 
 .modal-input:focus {
     border-color: #ffd700;
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
 }
 
 .section-selector {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     justify-content: center;
-    margin-bottom: 18px;
 }
 
 .sec-btn {
     flex: 1;
-    padding: 8px 4px;
+    padding: 7px 2px;
     border-radius: 8px;
-    border: 1px solid #475569;
+    border: 1px solid #334155;
     background: #1e293b;
     color: #cbd5e1;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.15s;
@@ -253,20 +296,78 @@ html, body {
     box-shadow: 0 0 8px rgba(37, 99, 235, 0.6);
 }
 
+/* Guide Card / Sanctuary Briefing */
+.guide-box {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(52, 211, 153, 0.4);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    text-align: right;
+}
+
+.guide-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #34d399;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.guide-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: #cbd5e1;
+}
+
+.guide-item:last-child {
+    margin-bottom: 0;
+}
+
+.guide-icon {
+    font-size: 14px;
+    line-height: 1;
+    margin-top: 1px;
+}
+
 .start-btn {
     width: 100%;
-    padding: 13px;
+    padding: 12px;
     background: linear-gradient(135deg, #16a34a, #15803d);
     color: #ffffff;
     border: none;
     border-radius: 10px;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 900;
     cursor: pointer;
-    box-shadow: 0 4px 16px rgba(22, 163, 74, 0.4);
+    box-shadow: 0 4px 16px rgba(22, 163, 74, 0.45);
     transition: transform 0.1s;
+    margin-bottom: 8px;
 }
 
 .start-btn:active {
     transform: scale(0.97);
+}
+
+.sound-toggle-btn {
+    width: 100%;
+    padding: 7px;
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.sound-toggle-btn:active {
+    background: #1e293b;
 }

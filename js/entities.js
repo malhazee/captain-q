@@ -124,9 +124,29 @@ class Player {
         this.gridY = Math.floor((this.pixelY - this.offsetY) / this.tileSize);
     }
 
-    render(ctx) {
+    render(ctx, isSanctuary = false) {
         ctx.save();
         ctx.translate(this.pixelX, this.pixelY);
+
+        // Sanctuary Safe Zone Shield Aura
+        if (isSanctuary) {
+            ctx.save();
+            const pulse = (Math.sin(Date.now() / 160) + 1) * 0.5;
+            const shieldRadius = this.radius * (1.3 + pulse * 0.18);
+            ctx.beginPath();
+            ctx.arc(0, 0, shieldRadius, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(16, 185, 129, 0.22)";
+            ctx.fill();
+            ctx.strokeStyle = "#34d399";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Floating shield indicator
+            ctx.font = `${Math.round(this.radius * 0.7)}px system-ui, sans-serif`;
+            ctx.textAlign = "center";
+            ctx.fillText("🛡️", 0, -shieldRadius - 2);
+            ctx.restore();
+        }
 
         // Handle direction & prevent upside-down Pacman when moving West
         const fDir = this.facingDir || DIR.EAST;
@@ -348,7 +368,13 @@ class Ghost {
             const nextC = this.gridX + d.dx;
             const nextR = this.gridY + d.dy;
             const canPassDoor = (this.state === "EATEN");
-            if (maze.isPassable(nextC, nextR, canPassDoor)) {
+
+            // Bar active roaming ghosts from entering the safe sanctuary
+            if (this.state !== "EATEN" && maze.isSanctuary(nextC, nextR)) {
+                continue;
+            }
+
+            if (maze.isPassable(nextC, nextR, canPassDoor, true)) {
                 const dist = Math.hypot(nextC - target.c, nextR - target.r);
                 validDirs.push({ dir: d, dist });
             }
@@ -362,7 +388,8 @@ class Ghost {
             for (let d of candidates) {
                 const nextC = this.gridX + d.dx;
                 const nextR = this.gridY + d.dy;
-                if (maze.isPassable(nextC, nextR, this.state === "EATEN")) {
+                if (this.state !== "EATEN" && maze.isSanctuary(nextC, nextR)) continue;
+                if (maze.isPassable(nextC, nextR, this.state === "EATEN", true)) {
                     this.dir = d;
                     break;
                 }

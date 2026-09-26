@@ -62,6 +62,35 @@ class CaptainQGame {
             });
         });
 
+        // Sound Toggle Button inside Start Screen
+        const soundBtn = document.getElementById("btn_sound_toggle");
+        const quickSoundBtn = document.getElementById("btn_quick_sound");
+        const updateSoundUI = (muted) => {
+            if (soundBtn) soundBtn.innerText = muted ? "🔇 المؤثرات الصوتية: معطلة" : "🔊 المؤثرات الصوتية: مفعلة";
+            if (quickSoundBtn) quickSoundBtn.innerText = muted ? "🔇" : "🔊";
+        };
+
+        if (soundBtn) {
+            soundBtn.addEventListener("click", () => {
+                const muted = audio.toggleMute();
+                updateSoundUI(muted);
+            });
+        }
+        if (quickSoundBtn) {
+            quickSoundBtn.addEventListener("click", () => {
+                const muted = audio.toggleMute();
+                updateSoundUI(muted);
+            });
+        }
+
+        // Quick Help button in Top Bar
+        const quickHelpBtn = document.getElementById("btn_quick_help");
+        if (quickHelpBtn) {
+            quickHelpBtn.addEventListener("click", () => {
+                document.getElementById("mobile_reg_modal").style.display = "flex";
+            });
+        }
+
         // Pause button
         const pauseBtn = document.getElementById("btn_pause");
         if (pauseBtn) {
@@ -78,6 +107,7 @@ class CaptainQGame {
     }
 
     submitRegistration() {
+        audio.init();
         const input = document.getElementById("mobile_name_input");
         const name = (input && input.value.trim()) ? input.value.trim() : "طالب مجهول";
         
@@ -217,6 +247,11 @@ class CaptainQGame {
         for (let ghost of this.ghosts) {
             ghost.update(this.maze, this.player, gHouse);
 
+            // Safe Sanctuary Immunity: player inside sanctuary is 100% immune from ghost attacks
+            if (this.maze.isSanctuary(this.player.gridX, this.player.gridY)) {
+                continue;
+            }
+
             // Distance to player
             const dist = Math.hypot(ghost.pixelX - this.player.pixelX, ghost.pixelY - this.player.pixelY);
             if (dist < (this.player.radius + ghost.radius) * 0.75) {
@@ -304,7 +339,8 @@ class CaptainQGame {
         this.renderCollectibles(ctx);
 
         // 3. Draw Entities
-        this.player.render(ctx);
+        const inSanctuary = this.maze.isSanctuary(this.player.gridX, this.player.gridY);
+        this.player.render(ctx, inSanctuary);
         this.ghosts.forEach(g => g.render(ctx));
 
         // 4. Draw Floating Texts
@@ -330,6 +366,41 @@ class CaptainQGame {
         ctx.fillStyle = "#070d1e";
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // Central Safe Sanctuary Floor Hologram (مساحة الملاذ الآمن)
+        const cx = Math.floor(cols / 2);
+        const cy = Math.floor(rows / 2);
+        const sx = this.mazeOffsetX + (cx - 2) * ts;
+        const sy = this.mazeOffsetY + (cy - 1) * ts;
+        const sw = 5 * ts;
+        const sh = 3 * ts;
+
+        ctx.save();
+        const sGrad = ctx.createRadialGradient(
+            sx + sw / 2, sy + sh / 2, ts * 0.4,
+            sx + sw / 2, sy + sh / 2, sw * 0.6
+        );
+        sGrad.addColorStop(0, "rgba(16, 185, 129, 0.22)");
+        sGrad.addColorStop(1, "rgba(6, 78, 59, 0.06)");
+        ctx.fillStyle = sGrad;
+        ctx.beginPath();
+        ctx.roundRect(sx, sy, sw, sh, 8);
+        ctx.fill();
+
+        // Neon emerald dashed border
+        ctx.strokeStyle = "rgba(52, 211, 153, 0.65)";
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(sx + 2, sy + 2, sw - 4, sh - 4);
+        ctx.setLineDash([]);
+
+        // Sanctuary Label Badge
+        ctx.fillStyle = "rgba(52, 211, 153, 0.85)";
+        ctx.font = `bold ${Math.round(ts * 0.35)}px system-ui, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("🛡️ ملاذ آمن", sx + sw / 2, sy + sh / 2 + (this.ghosts.some(g => g.state === "WAITING") ? ts * 0.95 : 0));
+        ctx.restore();
+
         // Walls
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
@@ -348,7 +419,7 @@ class CaptainQGame {
                     ctx.fillStyle = "rgba(59, 130, 246, 0.15)";
                     ctx.fillRect(px + 4, py + 4, ts - 8, ts - 8);
                 } else if (cell === 3) {
-                    // Ghost Door
+                    // Ghost Door beam
                     ctx.fillStyle = "rgba(244, 114, 182, 0.85)";
                     ctx.fillRect(px, py + ts * 0.4, ts, ts * 0.2);
                 }
@@ -385,28 +456,28 @@ class CaptainQGame {
             ctx.shadowBlur = 0;
         });
 
-        // Math Cards (Rectangular Badges with Numbers)
+        // Math Cards: scaled to fit strictly inside corridor tiles (ts * 0.88 by ts * 0.72)
         this.missionMgr.mathTiles.forEach(mt => {
             const px = this.mazeOffsetX + (mt.c + 0.5) * ts;
             const py = this.mazeOffsetY + (mt.r + 0.5) * ts;
-            const w = ts * 1.6;
-            const h = ts * 0.85;
+            const w = Math.round(ts * 0.88);
+            const h = Math.round(ts * 0.72);
 
             ctx.save();
             ctx.translate(px, py);
 
             ctx.beginPath();
-            ctx.roundRect(-w / 2, -h / 2, w, h, 6);
-            ctx.fillStyle = mt.isTarget ? "#1e3a5f" : "#2d1b36";
+            ctx.roundRect(-w / 2, -h / 2, w, h, 5);
+            ctx.fillStyle = mt.isTarget ? "#0d2644" : "#281232";
             ctx.fill();
 
-            ctx.strokeStyle = mt.isTarget ? "#60a5fa" : "#c084fc";
-            ctx.lineWidth = 1.8;
+            ctx.strokeStyle = mt.isTarget ? "#38bdf8" : "#f472b6";
+            ctx.lineWidth = 1.6;
             ctx.stroke();
 
             // Label text: prepend \u200E so negative numbers like -0.5 are LTR and not reversed
             ctx.fillStyle = "#ffffff";
-            ctx.font = `bold ${Math.round(ts * 0.44)}px system-ui, sans-serif`;
+            ctx.font = `bold ${Math.round(ts * 0.38)}px system-ui, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("\u200E" + mt.label, 0, 1);

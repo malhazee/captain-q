@@ -32,7 +32,8 @@ class MathMissionManager {
         this.superDots = [];
         this.mathTiles = [];
 
-        const walkable = maze.getWalkableCells();
+        // Filter walkable cells strictly excluding the Safe Sanctuary
+        const walkable = maze.getWalkableCells().filter(cell => !maze.isSanctuary(cell.c, cell.r));
         if (walkable.length === 0) return;
 
         // Shuffle cells
