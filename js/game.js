@@ -119,8 +119,10 @@ class CaptainQGame {
         // Canvas Click & Touch interaction for Intro Skip & Results Return
         this.canvas.addEventListener("click", (e) => this.handleCanvasInteraction(e));
         this.canvas.addEventListener("touchend", (e) => {
-            e.preventDefault();
-            this.handleCanvasInteraction(e);
+            if (this.state === "INTRO" || this.state === "GAME_OVER" || this.state === "VICTORY") {
+                if (e.cancelable) e.preventDefault();
+                this.handleCanvasInteraction(e);
+            }
         });
 
         // Keyboard Space/Enter to Skip Intro or Return to Menu

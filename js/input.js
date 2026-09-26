@@ -70,8 +70,6 @@ class InputHandler {
     }
 
     initTouch() {
-        // 1. D-Pad buttons & Continuous Sliding Support
-        const dpadCluster = document.querySelector(".dpad-cluster");
         const btnMap = {
             "btn_up": DIR.NORTH,
             "btn_down": DIR.SOUTH,
@@ -79,7 +77,10 @@ class InputHandler {
             "btn_right": DIR.EAST
         };
 
-        const handlePointOnDpad = (clientX, clientY) => {
+        const dpadCluster = document.querySelector(".dpad-cluster");
+        let dpadTouchId = null;
+
+        const updateDpadFromPoint = (clientX, clientY) => {
             const el = document.elementFromPoint(clientX, clientY);
             if (!el) return;
             const btn = el.closest(".touch-btn");
@@ -89,63 +90,94 @@ class InputHandler {
             }
         };
 
-        if (dpadCluster) {
-            dpadCluster.addEventListener("touchstart", (e) => {
-                e.preventDefault();
-                for (let i = 0; i < e.touches.length; i++) {
-                    handlePointOnDpad(e.touches[i].clientX, e.touches[i].clientY);
-                }
-            }, { passive: false });
-
-            dpadCluster.addEventListener("touchmove", (e) => {
-                e.preventDefault();
-                for (let i = 0; i < e.touches.length; i++) {
-                    handlePointOnDpad(e.touches[i].clientX, e.touches[i].clientY);
-                }
-            }, { passive: false });
-
-            dpadCluster.addEventListener("touchend", () => {
-                document.querySelectorAll(".touch-btn").forEach(b => b.classList.remove("active-touch"));
-            });
-        }
-
-        // Direct clicks on individual D-Pad buttons
+        // 1. Direct D-Pad Button Listeners: Instant and dedicated
         Object.keys(btnMap).forEach((id) => {
             const btn = document.getElementById(id);
             if (!btn) return;
             const dir = btnMap[id];
-            btn.addEventListener("mousedown", (e) => {
-                e.preventDefault();
+
+            const onBtnDown = (e) => {
+                if (e.cancelable) e.preventDefault();
+                e.stopPropagation();
                 audio.init();
                 this.setDirection(dir);
-            });
+            };
+
+            btn.addEventListener("touchstart", onBtnDown, { passive: false });
+            btn.addEventListener("mousedown", onBtnDown);
         });
 
-        // 2. Real-time Continuous Touch Drag & Swipe on Canvas / Game Area
+        // 2. Continuous Sliding Across D-Pad Cluster (Locked to dpadTouchId)
+        if (dpadCluster) {
+            dpadCluster.addEventListener("touchstart", (e) => {
+                e.stopPropagation();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    const t = e.changedTouches[i];
+                    dpadTouchId = t.identifier;
+                    updateDpadFromPoint(t.clientX, t.clientY);
+                }
+            }, { passive: false });
+
+            dpadCluster.addEventListener("touchmove", (e) => {
+                e.stopPropagation();
+                if (e.cancelable) e.preventDefault();
+                for (let i = 0; i < e.touches.length; i++) {
+                    const t = e.touches[i];
+                    if (t.identifier === dpadTouchId) {
+                        updateDpadFromPoint(t.clientX, t.clientY);
+                        break;
+                    }
+                }
+            }, { passive: false });
+
+            const clearDpadActive = (e) => {
+                e.stopPropagation();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === dpadTouchId) {
+                        dpadTouchId = null;
+                        document.querySelectorAll(".touch-btn").forEach(b => b.classList.remove("active-touch"));
+                        break;
+                    }
+                }
+            };
+
+            dpadCluster.addEventListener("touchend", clearDpadActive, { passive: false });
+            dpadCluster.addEventListener("touchcancel", clearDpadActive, { passive: false });
+        }
+
+        // 3. Smooth Screen Swipe Steering: Strictly isolated from D-Pad
         const canvas = document.getElementById("gameCanvas");
         if (!canvas) return;
 
+        let canvasTouchId = null;
         let dragStartX = 0;
         let dragStartY = 0;
-        let isTouching = false;
-        const SWIPE_THRESHOLD = 14; // pixels for immediate continuous steering
+        const SWIPE_THRESHOLD = 14; // pixels
 
         canvas.addEventListener("touchstart", (e) => {
-            if (e.touches.length === 1) {
+            if (canvasTouchId === null && e.changedTouches.length > 0) {
+                const t = e.changedTouches[0];
+                canvasTouchId = t.identifier;
+                dragStartX = t.clientX;
+                dragStartY = t.clientY;
                 audio.init();
-                isTouching = true;
-                dragStartX = e.touches[0].clientX;
-                dragStartY = e.touches[0].clientY;
             }
         }, { passive: true });
 
         canvas.addEventListener("touchmove", (e) => {
-            if (!isTouching || e.touches.length !== 1) return;
+            if (canvasTouchId === null) return;
 
-            const curX = e.touches[0].clientX;
-            const curY = e.touches[0].clientY;
-            const dx = curX - dragStartX;
-            const dy = curY - dragStartY;
+            let canvasTouch = null;
+            for (let i = 0; i < e.touches.length; i++) {
+                if (e.touches[i].identifier === canvasTouchId) {
+                    canvasTouch = e.touches[i];
+                    break;
+                }
+            }
+            if (!canvasTouch) return;
+
+            const dx = canvasTouch.clientX - dragStartX;
+            const dy = canvasTouch.clientY - dragStartY;
             const dist = Math.hypot(dx, dy);
 
             if (dist >= SWIPE_THRESHOLD) {
@@ -154,34 +186,22 @@ class InputHandler {
                 } else {
                     this.setDirection(dy > 0 ? DIR.SOUTH : DIR.NORTH);
                 }
-                // Reset anchor point to enable continuous steering while dragging
-                dragStartX = curX;
-                dragStartY = curY;
+                // Reset anchor for continuous steering without lifting finger
+                dragStartX = canvasTouch.clientX;
+                dragStartY = canvasTouch.clientY;
             }
         }, { passive: true });
 
-        canvas.addEventListener("touchend", (e) => {
-            if (!isTouching) return;
-            isTouching = false;
-
-            // If it was a quick tap with minimal movement, steer relative to Pacman
-            if (e.changedTouches.length === 1 && window.gameInstance && window.gameInstance.player) {
-                const rect = canvas.getBoundingClientRect();
-                const tapPixelX = (e.changedTouches[0].clientX - rect.left) * (canvas.width / rect.width);
-                const tapPixelY = (e.changedTouches[0].clientY - rect.top) * (canvas.height / rect.height);
-                const p = window.gameInstance.player;
-
-                const dx = tapPixelX - p.pixelX;
-                const dy = tapPixelY - p.pixelY;
-                if (Math.hypot(dx, dy) > 20) {
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        this.setDirection(dx > 0 ? DIR.EAST : DIR.WEST);
-                    } else {
-                        this.setDirection(dy > 0 ? DIR.SOUTH : DIR.NORTH);
-                    }
+        const endCanvasTouch = (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === canvasTouchId) {
+                    canvasTouchId = null;
+                    break;
                 }
             }
-            document.querySelectorAll(".touch-btn").forEach(b => b.classList.remove("active-touch"));
-        }, { passive: true });
+        };
+
+        canvas.addEventListener("touchend", endCanvasTouch, { passive: true });
+        canvas.addEventListener("touchcancel", endCanvasTouch, { passive: true });
     }
 }

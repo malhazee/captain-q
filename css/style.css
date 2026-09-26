@@ -44,6 +44,10 @@ html, body {
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.8), 0 0 12px rgba(59, 130, 246, 0.3);
     margin-top: 2px;
     display: block;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 @media (orientation: landscape) {
@@ -103,6 +107,10 @@ html, body {
     grid-template-rows: repeat(3, 56px);
     gap: 6px;
     pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 .touch-btn {
