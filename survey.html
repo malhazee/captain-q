@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>استبانة أولياء الأمور | مبادرة كابتن كيو - مدرسة جفين الثانوية للبنين</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-navy: #1B365D;
+      --secondary-navy: #0F223D;
+      --accent-gold: #D4AF37;
+      --dark-gold: #B45309;
+      --light-gold: #FFFBEB;
+      --border-gold: #FDE68A;
+      --bg-slate: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --text-main: #1E293B;
+      --text-muted: #64748B;
+      --star-active: #F59E0B;
+      --star-inactive: #CBD5E1;
+      --success-green: #10B981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', 'Tajawal', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-slate);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 16px 12px 40px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* Royal Header Card */
+    .header-card {
+      background: linear-gradient(135deg, var(--secondary-navy) 0%, var(--primary-navy) 100%);
+      border-radius: 20px;
+      padding: 26px 20px 22px;
+      text-align: center;
+      color: #FFFFFF;
+      box-shadow: 0 10px 25px -5px rgba(27, 54, 93, 0.35);
+      border: 2px solid var(--accent-gold);
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .header-card::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 120px;
+      height: 120px;
+      background: radial-gradient(circle, rgba(212, 175, 55, 0.25) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .gov-header {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #CBD5E1;
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    .award-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(212, 175, 55, 0.18);
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      padding: 4px 14px;
+      border-radius: 30px;
+      font-size: 0.85rem;
+      color: #FDE68A;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .main-title {
+      font-size: 1.45rem;
+      font-weight: 900;
+      color: #FFFFFF;
+      line-height: 1.35;
+      margin-bottom: 6px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .main-title span {
+      color: #FBBF24;
+    }
+
+    .sub-title {
+      font-size: 0.95rem;
+      color: #E2E8F0;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .teacher-badge {
+      display: inline-block;
+      background: #FFFFFF;
+      color: var(--primary-navy);
+      padding: 5px 16px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 0.88rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      border: 1px solid var(--accent-gold);
+    }
+
+    /* Message Intro Card */
+    .intro-card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 18px 20px;
+      margin-bottom: 18px;
+      border-right: 5px solid var(--accent-gold);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+      font-size: 0.92rem;
+      color: #334155;
+    }
+
+    .intro-card strong {
+      color: var(--primary-navy);
+    }
+
+    /* Form Section Cards */
+    .form-card {
+      background: var(--card-bg);
+      border-radius: 18px;
+      padding: 22px 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      border: 1px solid #E2E8F0;
+    }
+
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--primary-navy);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 2px solid #F1F5F9;
+      padding-bottom: 10px;
+    }
+
+    .input-group {
+      margin-bottom: 16px;
+    }
+
+    .input-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .input-label {
+      display: block;
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: #1E293B;
+      margin-bottom: 6px;
+    }
+
+    .input-label .req {
+      color: #EF4444;
+      margin-right: 4px;
+    }
+
+    .input-field {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1.5px solid #CBD5E1;
+      font-size: 0.95rem;
+      background: #F8FAFC;
+      transition: all 0.2s ease;
+      color: #1E293B;
+      font-family: inherit;
+    }
+
+    .input-field:focus {
+      outline: none;
+      border-color: var(--primary-navy);
+      background: #FFFFFF;
+      box-shadow: 0 0 0 3px rgba(27, 54, 93, 0.12);
+    }
+
+    select.input-field {
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231B365D' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: left 12px center;
+      background-size: 18px;
+      padding-left: 36px;
+    }
+
+    /* Question Item Box */
+    .question-box {
+      background: #FAFBFD;
+      border-radius: 14px;
+      padding: 16px 14px;
+      margin-bottom: 16px;
+      border: 1px solid #E2E8F0;
+      transition: border-color 0.2s;
+    }
+
+    .question-box.answered {
+      border-color: #CBD5E1;
+      background: #FFFFFF;
+    }
+
+    .question-text {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: #1E293B;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.45;
+    }
+
+    .q-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: var(--primary-navy);
+      color: #FFFFFF;
+      border-radius: 50%;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* Interactive Star Rating */
+    .star-rating-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 4px;
+    }
+
+    .stars-row {
+      display: flex;
+      flex-direction: row-reverse;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .star-btn {
+      background: none;
+      border: none;
+      font-size: 2.2rem;
+      color: var(--star-inactive);
+      cursor: pointer;
+      transition: transform 0.15s ease, color 0.15s ease;
+      padding: 0 2px;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .star-btn:active {
+      transform: scale(1.25);
+    }
+
+    /* Hover & Active States */
+    .stars-row .star-btn.active,
+    .stars-row .star-btn.active ~ .star-btn {
+      color: var(--star-active);
+    }
+
+    .rating-feedback-badge {
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 3px 12px;
+      border-radius: 20px;
+      background: #F1F5F9;
+      color: #64748B;
+      transition: all 0.2s ease;
+      min-height: 24px;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .rating-feedback-badge.selected {
+      background: #FEF3C7;
+      color: #92400E;
+      border: 1px solid #FCD34D;
+    }
+
+    /* Qualitative Textarea */
+    textarea.input-field {
+      min-height: 95px;
+      resize: vertical;
+    }
+
+    /* Submit Button */
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #B45309 0%, #D4AF37 50%, #1B365D 100%);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 16px;
+      font-size: 1.15rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(180, 83, 9, 0.3);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(180, 83, 9, 0.4);
+    }
+
+    .submit-btn:active {
+      transform: translateY(1px);
+    }
+
+    .submit-btn:disabled {
+      background: #94A3B8;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* Success Screen */
+    .success-screen {
+      display: none;
+      background: #FFFFFF;
+      border-radius: 24px;
+      padding: 36px 22px;
+      text-align: center;
+      border: 2px solid var(--accent-gold);
+      box-shadow: 0 10px 30px rgba(27, 54, 93, 0.15);
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .success-icon {
+      font-size: 4rem;
+      margin-bottom: 12px;
+      animation: bounce 1s infinite alternate;
+    }
+
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to { transform: translateY(-6px); }
+    }
+
+    .success-title {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: var(--primary-navy);
+      margin-bottom: 8px;
+    }
+
+    .success-desc {
+      font-size: 0.98rem;
+      color: #334155;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .cert-box {
+      background: #FFFDF7;
+      border: 2px dashed var(--accent-gold);
+      border-radius: 16px;
+      padding: 20px 16px;
+      margin-bottom: 24px;
+    }
+
+    .cert-box h4 {
+      color: var(--dark-gold);
+      font-size: 1.1rem;
+      margin-bottom: 6px;
+      font-weight: 800;
+    }
+
+    .cert-box p {
+      font-size: 0.92rem;
+      color: #475569;
+    }
+
+    .footer-text {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #94A3B8;
+      margin-top: 24px;
+    }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: #FFFFFF;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- 1. Royal Header Card -->
+    <header class="header-card">
+      <div class="gov-header">المملكة الأردنية الهاشمية  •  وزارة التربية والتعليم  •  مديرية لواء الكورة  •  مدرسة جفين الثانوية للبنين</div>
+      <div class="award-badge">
+        <span>🏆</span>
+        <span>جائزة الملكة رانيا العبدالله للتميز التربوي (الدورة 2026/2027)</span>
+      </div>
+      <h1 class="main-title">استبانة قياس رضا وأثر <span>أولياء الأمور</span> 👑</h1>
+      <div class="sub-title">مبادرة «كابتن كيو - Captain Q» للتعلّم الرقمي التفاعلي لمبحث الرياضيات</div>
+      <div class="teacher-badge">
+        معلم المبحث المتميز: أ. مُصْعَب الهَزِيم
+      </div>
+    </header>
+
+    <!-- Success Screen (Shown after submit) -->
+    <div id="successScreen" class="success-screen">
+      <div class="success-icon">🎖️</div>
+      <h2 class="success-title">خالص الشكر وعظيم الامتنان!</h2>
+      <p class="success-desc">
+        تم تسجيل تقييمكم واعتماد إجاباتكم بنجاح في السجل السحابي للشراكة المجتمعية لمدرسة جفين الثانوية للبنين.
+      </p>
+
+      <div class="cert-box">
+        <h4>🌟 وسام الشريك التربوي الفاعل 🌟</h4>
+        <p id="certStudentInfo" style="font-weight: 700; color: #1B365D; margin-bottom: 6px;"></p>
+        <p>
+          نُثمّن عالياً دعمكم المستمر ومتابعتكم الحثيثة لابنكم؛ فشراكتكم الكريمة مع المدرسة هي حجر الأساس لصناعة التفوق والإبداع في مبحث الرياضيات.
+        </p>
+      </div>
+
+      <div style="font-size: 0.9rem; color: #1B365D; font-weight: 700;">
+        معاً نصنع التميز والريادة 👑<br>
+        معلم المبحث: أ. مُصْعَب الهَزِيم  •  إدارة مدرسة جفين الثانوية للبنين
+      </div>
+    </div>
+
+    <!-- Main Survey Form -->
+    <form id="surveyForm">
+
+      <!-- 2. Message Intro Card -->
+      <div class="intro-card">
+        <strong>ولي الأمر الفاضل / وليّة الأمر الفاضلة... تحية طيبة وبعد،،</strong><br>
+        انطلاقاً من إيماننا بأن تميز أبنائنا يكتمل بالشراكة المتينة بين المدرسة والأسرة، نرجو منكم التكرم بإبداء تقييمكم الصادق لتجربة ابنكم مع لعبة <strong>«كابتن كيو»</strong> ومتابعة معلم المبحث. تستغرق الاستبانة <strong>دقيقة واحدة فقط</strong>، وإجاباتكم تدعم ملف ترشح المعلم والمدرسة لجائزة التميز.
+      </div>
+
+      <!-- 3. Student & Parent Identification -->
+      <div class="form-card">
+        <h3 class="section-title">
+          <span>📋</span>
+          <span>البيانات التعريفية</span>
+        </h3>
+
+        <div class="input-group">
+          <label class="input-label" for="studentName"><span class="req">*</span>اسم الطالب الرباعي:</label>
+          <input type="text" id="studentName" class="input-field" placeholder="اكتب اسم ابنك الرباعي كاملاً..." required>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="section"><span class="req">*</span>الشعبة الصفية (الصف السابع):</label>
+          <select id="section" class="input-field" required>
+            <option value="" disabled selected>-- اختر الشعبة الصفية --</option>
+            <option value="شعبة أ">الصف السابع (شعبة أ)</option>
+            <option value="شعبة ب">الصف السابع (شعبة ب)</option>
+            <option value="شعبة ج">الصف السابع (شعبة ج)</option>
+          </select>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="input-group">
+            <label class="input-label" for="parentName">اسم ولي الأمر (اختياري):</label>
+            <input type="text" id="parentName" class="input-field" placeholder="اسم الأب أو الأم...">
+          </div>
+          <div class="input-group">
+            <label class="input-label" for="relation">صلة القرابة:</label>
+            <select id="relation" class="input-field">
+              <option value="الأب" selected>الأب</option>
+              <option value="الأم">الأم</option>
+              <option value="ولي الأمر">ولي الأمر</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Interactive Rating Criteria (7 Core Items) -->
+      <div class="form-card">
+        <h3 class="section-title">
+          <span>⭐</span>
+          <span>محاور قياس الأثر والشراكة المنزلية (اضغط على النجوم للتقييم)</span>
+        </h3>
+
+        <!-- Q1 -->
+        <div class="question-box" id="box_q1">
+          <div class="question-text">
+            <span class="q-num">1</span>
+            <span>سهولة وصول ابني للعبة "كابتن كيو" من الهاتف أو الحاسوب في المنزل، وملاءمتها كبيئة تعليمية رقمية آمنة وممتعة.</span>
+          </div>
+          <div class="star-rating-container">
+            <div class="stars-row" data-q="q1">
+              <button type="button" class="star-btn" data-val="5">★</button>
+              <button type="button" class="star-btn" data-val="4">★</button>
+              <button type="button" class="star-btn" data-val="3">★</button>
+              <button type="button" class="star-btn" data-val="2">★</button>
+              <button type="button" class="star-btn" data-val="1">★</button>
+            </div>
+            <div class="rating-feedback-badge" id="badge_q1">انقر للتقييم</div>
+            <input type="hidden" id="q1" name="q1" value="" required>
+          </div>
+        </div>
+
+        <!-- Q2 -->
+        <div class="question-box" id="box_q2">
+          <div class="question-text">
+            <span class="q-num">2</span>
+            <span>لاحظت زيادة واضحة في دافعية ابني وحماسه لحل تمارين الرياضيات ومذاكرتها ذاتياً دون ضغط أو إكراه.</span>
+          </div>
+          <div class="star-rating-container">
+            <div class="stars-row" data-q="q2">
+              <button type="button" class="star-btn" data-val="5">★</button>
+              <button type="button" class="star-btn" data-val="4">★</button>
+              <button type="button" class="star-btn" data-val="3">★</button>
+              <button type="button" class="star-btn" data-val="2">★</button>
+              <button type="button" class="star-btn" data-val="1">★</button>
+            </div>
+            <div class="rating-feedback-badge" id="badge_q2">انقر للتقييم</div>
+            <input type="hidden" id="q2" name="q2" value="" required>
+          </div>
+        </div>
+
+        <!-- Q3 -->
+        <div class="question-box" id="box_q3">
+          <div class="question-text">
+            <span class="q-num">3</span>
+            <span>ساهمت التجربة التفاعلية في تقليل شعور القلق والتوتر والخوف من مادة الرياضيات لدى ابني في المنزل.</span>
+          </div>
+          <div class="star-rating-container">
+            <div class="stars-row" data-q="q3">
+              <button type="button" class="star-btn" data-val="5">★</button>
+              <button type="button" class="star-btn" data-val="4">★</button>
+              <button type="button" class="star-btn" data-val="3">★</button>
+              <button type="button" class="star-btn" data-val="2">★</button>
+              <button type="button" class="star-btn" data-val="1">★</button>
+            </div>
+            <div class="rating-feedback-badge" id="badge_q3">انقر للتقييم</div>
+            <input type="hidden" id="q3" name="q3" value="" required>
+          </div>
+        </div>
+
+        <!-- Q4 -->
+        <div class="question-box" id="box_q4">
+          <div class="question-text">
+            <span class="q-num">4</span>
+            <span>ساعدت اللعبة ابني على تصويب أخطائه وفهم المفاهيم الصعبة (كالكسور والقيم المطلقة) بطريقة مسلية وسلسة.</span>
+          </div>
+          <div class="star-rating-container">
+            <div class="stars-row" data-q="q4">
+              <button type="button" class="star-btn" data-val="5">★</button>
+              <button type="button" class="star-btn" data-val="4">★</button>
+              <button type="button" class="star-btn" data-val="3">★</button>
+              <button type="button" class="star-btn" data-val="2">★</button>
+              <button type="button" class="star-btn" data-val="1">★</button>
+            </div>
+            <div class="rating-feedback-badge" id="badge_q4">انقر للتقييم</div>
+            <input type="hidden" id="q4" name="q4" value="" required>
+          </div>
+        </div>
+
+        <!-- Q5 -->
+        <div class="question-box" id="box_q5">
+          <div class="question-text">
+            <span class="q-num">5</span>
+            <span>وضوح وإيجابية تواصل معلم المبحث (أ. مصعب الهزيم) ورسائله الإرشادية ومتابعته المستمرة معنا كأولياء أمور.</span>
+          </div>
+          <div class="star-rating-container">
+            <div class="stars-row" data-q="q5">
+              <button type="button" class="star-btn" data-val="5">★</button>
+              <button type="button" class="star-btn" data-val="4">★</button>
+              <button type="button" class="star-btn" data-val="3">★</button>
+              <button type="button" class="star-btn" data-val="2">★</button>
+              <button type="button" class="star-btn" data-val="1">★</button>
+            </div>
+            <div class="rating-feedback-badge" id="badge_q5">انقر للتقييم</div>
+            <input type="hidden" id="q5" name="q5" value="" required>
+          </div>
+        </div>
+
+        <!-- Q6 -->
+        <div class="question-box" id="box_q6">
+          <div class="question-text">
+            <span class="q-num">6</span>
+            <span>شجعت لوحة الشرف وتكريم فرسان الإتقان ابني على التنافس الإيجابي والإصرار على بلوغ المركز الأول والتميز.</span>
+          </div>
+          <div class="star-rating-container">
+            <div class="stars-row" data-q="q6">
+              <button type="button" class="star-btn" data-val="5">★</button>
+              <button type="button" class="star-btn" data-val="4">★</button>
+              <button type="button" class="star-btn" data-val="3">★</button>
+              <button type="button" class="star-btn" data-val="2">★</button>
+              <button type="button" class="star-btn" data-val="1">★</button>
+            </div>
+            <div class="rating-feedback-badge" id="badge_q6">انقر للتقييم</div>
+            <input type="hidden" id="q6" name="q6" value="" required>
+          </div>
+        </div>
+
+        <!-- Q7 -->
+        <div class="question-box" id="box_q7">
+          <div class="question-text">
+            <span class="q-num">7</span>
+            <span>أؤيد وأشجع استمرار وتعميم مثل هذه المبادرات الرقمية التفاعلية في تدريس مناهج الرياضيات مستقبلاً.</span>
+          </div>
+          <div class="star-rating-container">
+            <div class="stars-row" data-q="q7">
+              <button type="button" class="star-btn" data-val="5">★</button>
+              <button type="button" class="star-btn" data-val="4">★</button>
+              <button type="button" class="star-btn" data-val="3">★</button>
+              <button type="button" class="star-btn" data-val="2">★</button>
+              <button type="button" class="star-btn" data-val="1">★</button>
+            </div>
+            <div class="rating-feedback-badge" id="badge_q7">انقر للتقييم</div>
+            <input type="hidden" id="q7" name="q7" value="" required>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 5. Qualitative Feedback / Testimonial -->
+      <div class="form-card">
+        <h3 class="section-title">
+          <span>💬</span>
+          <span>كلمة أو شهادة تقدير (أثر لاحظته على ابنك)</span>
+        </h3>
+        <div class="input-group">
+          <label class="input-label" for="feedback">كلمة توجهها لمعلم المبحث (أ. مصعب الهزيم) أو مقترح للشراكة المستقبلية:</label>
+          <textarea id="feedback" class="input-field" placeholder="شاركنا ملاحظاتك أو كلمة شكر أو أي تغير ملموس لمسته في حب ابنك للرياضيات..."></textarea>
+        </div>
+      </div>
+
+      <!-- 6. Submit Button -->
+      <button type="submit" id="submitBtn" class="submit-btn">
+        <span>📤</span>
+        <span>إرسال الاستبانة واعتماد التقييم</span>
+      </button>
+
+    </form>
+
+    <footer class="footer-text">
+      مبادرة كابتن كيو (Captain Q)  •  مدرسة جفين الثانوية للبنين 2026/2027<br>
+      جائزة الملكة رانيا العبدالله للتميز التربوي
+    </footer>
+
+  </div>
+
+  <script>
+    // Configuration & Endpoint
+    const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzW67pTOIhLxD89xYACaGs-O6qMbkBbUmpb7oEaQ7Vj0p_WxaQw_epiPI6aKpUN0nH6/exec";
+
+    const ratingLabels = {
+      5: "⭐⭐⭐⭐⭐ ممتاز / أوافق بشدة (5/5)",
+      4: "⭐⭐⭐⭐ جيد جداً / أوافق (4/5)",
+      3: "⭐⭐⭐ جيد / محايد (3/5)",
+      2: "⭐⭐ مقبول / لا أوافق (2/5)",
+      1: "⭐ ضعيف / لا أوافق إطلاقاً (1/5)"
+    };
+
+    // Setup interactive star rating
+    document.querySelectorAll('.stars-row').forEach(row => {
+      const qId = row.dataset.q;
+      const hiddenInput = document.getElementById(qId);
+      const badge = document.getElementById('badge_' + qId);
+      const box = document.getElementById('box_' + qId);
+      const buttons = row.querySelectorAll('.star-btn');
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const val = parseInt(btn.dataset.val);
+          hiddenInput.value = val;
+
+          // Update active stars
+          buttons.forEach(b => {
+            const bVal = parseInt(b.dataset.val);
+            if (bVal <= val) {
+              b.classList.add('active');
+            } else {
+              b.classList.remove('active');
+            }
+          });
+
+          // Update badge text
+          badge.textContent = ratingLabels[val] || (val + " من 5");
+          badge.classList.add('selected');
+          box.classList.add('answered');
+        });
+      });
+    });
+
+    // Handle Form Submit
+    const form = document.getElementById('surveyForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const successScreen = document.getElementById('successScreen');
+    const certStudentInfo = document.getElementById('certStudentInfo');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Check all star questions
+      for (let i = 1; i <= 7; i++) {
+        const val = document.getElementById('q' + i).value;
+        if (!val) {
+          alert('يرجى التكرم بالإجابة على السؤال رقم (' + i + ') بالنقر على عدد النجوم المناسب.');
+          document.getElementById('box_q' + i).scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+      }
+
+      const studentName = document.getElementById('studentName').value.trim();
+      const section = document.getElementById('section').value;
+      const parentName = document.getElementById('parentName').value.trim();
+      const relation = document.getElementById('relation').value;
+      const feedback = document.getElementById('feedback').value.trim();
+
+      const q1 = parseInt(document.getElementById('q1').value);
+      const q2 = parseInt(document.getElementById('q2').value);
+      const q3 = parseInt(document.getElementById('q3').value);
+      const q4 = parseInt(document.getElementById('q4').value);
+      const q5 = parseInt(document.getElementById('q5').value);
+      const q6 = parseInt(document.getElementById('q6').value);
+      const q7 = parseInt(document.getElementById('q7').value);
+
+      const avgRating = ((q1 + q2 + q3 + q4 + q5 + q6 + q7) / 7).toFixed(2);
+
+      const payload = {
+        type: "parent_survey",
+        date: new Date().toLocaleString('ar-JO', { timeZone: 'Asia/Amman' }),
+        student_name: studentName,
+        section: section,
+        parent_name: parentName || (relation + " الطالب " + studentName),
+        relation: relation,
+        q1: q1,
+        q2: q2,
+        q3: q3,
+        q4: q4,
+        q5: q5,
+        q6: q6,
+        q7: q7,
+        average_rating: avgRating,
+        feedback: feedback
+      };
+
+      // Button loading state
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner"></span><span>جاري إرسال التقييم سحابياً...</span>';
+
+      const showSuccess = () => {
+        certStudentInfo.textContent = "الطالب: " + studentName + " (" + section + ")";
+        form.style.display = 'none';
+        successScreen.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      // Safeguard timer: show success after 1.2s max if fetch is running in background
+      const timer = setTimeout(showSuccess, 1200);
+
+      try {
+        // Send to Google Sheets Web App via fetch (no-cors)
+        await fetch(WEBHOOK_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        // Also save in localStorage as local backup
+        try {
+          const localSurveys = JSON.parse(localStorage.getItem('captain_q_parent_surveys') || '[]');
+          localSurveys.push(payload);
+          localStorage.setItem('captain_q_parent_surveys', JSON.stringify(localSurveys));
+        } catch(e) {}
+
+        clearTimeout(timer);
+        showSuccess();
+
+      } catch (err) {
+        console.warn("Telemetry notice:", err);
+        clearTimeout(timer);
+        showSuccess();
+      }
+    });
+  </script>
+</body>
+</html>
